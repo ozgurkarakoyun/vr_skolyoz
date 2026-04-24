@@ -7,22 +7,18 @@ nixPkgs = ["glib", "python311"]
 [build.nixpacksPlan.phases.install]
 cmds = [
   "pip install --upgrade pip",
-
-  # Tüm bağımlılıkları kur; constraints.txt opencv-python (full)'ü engeller
   "pip install -r requirements.txt -c constraints.txt",
-
-  # ultralytics yine de full opencv kurmuşsa temizle
-
- "pip uninstall -y opencv-python && pip install opencv-python-headless==4.9.0.80"
-  # Doğrula
+  "pip uninstall -y opencv-python || true",
   "python -c \"import cv2; print('[OK] cv2', cv2.__version__)\"",
-  "python -c \"import ultralytics; print('[OK] ultralytics', ultralytics.__version__)\""
+  "python -c \"import ultralytics; print('[OK] ultralytics', ultralytics.__version__)\"",
+  "python -c \"import flask; print('[OK] flask', flask.__version__)\"",
+  "python -c \"import eventlet; print('[OK] eventlet', eventlet.__version__)\""
 ]
 
 [deploy]
-startCommand = "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5 app:app"
+startCommand = "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT --timeout 120 --keep-alive 5 --log-level debug app:app"
 healthcheckPath = "/health"
-healthcheckTimeout = 60
+healthcheckTimeout = 120
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 3
 
