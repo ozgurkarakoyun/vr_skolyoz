@@ -7,7 +7,8 @@ nixPkgs = ["libGL", "libGLU", "glib", "python311"]
 [build.nixpacksPlan.phases.install]
 cmds = [
   "pip install --upgrade pip",
-  "pip install -r requirements.txt"
+  "pip install -r requirements.txt",
+  "pip uninstall -y opencv-python && pip install opencv-python-headless==4.9.0.80"
 ]
 
 [deploy]
