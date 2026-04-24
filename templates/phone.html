@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>Schroth VR — Telefon</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--accent:#00e5ff;--purple:#7b2fff;--success:#2ed573;--warn:#ffa502;--danger:#ff4757}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:#e8f4f8;font-family:'DM Sans',sans-serif;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+
+  /* Topbar */
+  .topbar{display:flex;align-items:center;gap:10px;padding:11px 14px;background:rgba(0,0,0,.5);backdrop-filter:blur(10px);border-bottom:1px solid rgba(0,229,255,.1);flex-shrink:0;z-index:10}
+  .back-btn{background:transparent;border:1px solid rgba(0,229,255,.2);color:var(--accent);width:32px;height:32px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .page-title{font-family:'Syne',sans-serif;font-size:.9rem;font-weight:700}
+  .spacer{flex:1}
+  .session-badge{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.25);color:var(--accent);padding:3px 10px;border-radius:100px;font-size:10px;font-family:'DM Mono',monospace;letter-spacing:2px}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--danger)}
+  .status-dot.connected{background:var(--success);animation:blink 2s infinite}
+  @keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+  /* Camera */
+  .camera-wrap{position:relative;flex:1;overflow:hidden;background:#000;min-height:0}
+  video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
+  canvas#overlayCanvas{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+
+  /* Floating */
+  .fl-score{position:absolute;top:10px;right:10px;background:rgba(5,10,15,.88);backdrop-filter:blur(10px);border:1px solid rgba(0,229,255,.2);border-radius:12px;padding:8px 14px;text-align:center;min-width:72px}
+  .fl-score-num{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;line-height:1;color:#5a7a8a;transition:color .4s}
+  .fl-score-lbl{font-size:9px;letter-spacing:1.5px;color:#2a4455;margin-top:1px}
+  .fl-curve{position:absolute;top:10px;left:10px;background:rgba(5,10,15,.88);backdrop-filter:blur(10px);border:1px solid rgba(123,47,255,.3);border-radius:10px;padding:6px 12px}
+  .fl-curve-type{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;color:#a78bfa}
+  .fl-curve-lbl{font-size:9px;color:#3a3a5a;letter-spacing:1px}
+  .fl-mock{position:absolute;bottom:36px;left:10px;background:rgba(255,165,0,.15);border:1px solid rgba(255,165,0,.3);border-radius:6px;padding:3px 8px;font-size:10px;color:#ffa502;display:none}
+
+  /* Phase bar */
+  .phase-bar-wrap{position:absolute;bottom:0;left:0;right:0;padding:0 10px 10px}
+  .phase-label{font-size:10px;color:rgba(255,255,255,.5);margin-bottom:3px;display:flex;justify-content:space-between}
+  .phase-label span{color:#00e5ff;font-weight:500}
+  .phase-bar-bg{height:3px;background:rgba(255,255,255,.07);border-radius:3px;overflow:hidden}
+  .phase-bar-fill{height:100%;width:0%;border-radius:3px;transition:width 1s linear}
+
+  /* Bottom */
+  .bottom{background:rgba(5,10,15,.97);backdrop-filter:blur(20px);border-top:1px solid rgba(255,255,255,.04);padding:12px 14px;flex-shrink:0}
+
+  /* ── Schroth metrikleri ── */
+  .section-title{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:#2a4455;margin-bottom:6px}
+  .metrics-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px}
+  .metric{background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.05);border-radius:7px;padding:6px 3px;text-align:center}
+  .metric-val{font-family:'DM Mono',monospace;font-size:.78rem;font-weight:500;color:var(--accent)}
+  .metric-name{font-size:8px;color:#2a4455;margin-top:1px}
+
+  /* ── Skolyoz açı paneli (orijinal model) ── */
+  .scol-panel{margin-bottom:10px}
+  .scol-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px}
+  .scol-item{border-radius:7px;padding:7px 4px;text-align:center;border:1px solid}
+  .scol-item.normal{background:rgba(46,213,115,.06);border-color:rgba(46,213,115,.2)}
+  .scol-item.orta{background:rgba(255,165,2,.06);border-color:rgba(255,165,2,.2)}
+  .scol-item.kritik{background:rgba(255,71,87,.08);border-color:rgba(255,71,87,.25)}
+  .scol-val{font-family:'DM Mono',monospace;font-size:.9rem;font-weight:600}
+  .scol-item.normal .scol-val{color:#2ed573}
+  .scol-item.orta .scol-val{color:#ffa502}
+  .scol-item.kritik .scol-val{color:#ff4757}
+  .scol-lbl{font-size:8px;color:#2a4455;margin-top:2px}
+  .scol-badge{font-size:8px;padding:1px 6px;border-radius:3px;margin-top:2px;display:inline-block}
+  .scol-item.normal .scol-badge{background:rgba(46,213,115,.15);color:#2ed573}
+  .scol-item.orta .scol-badge{background:rgba(255,165,2,.15);color:#ffa502}
+  .scol-item.kritik .scol-badge{background:rgba(255,71,87,.15);color:#ff4757}
+  .scol-est{font-size:9px;color:#3a3a5a;text-align:right;margin-top:2px}
+
+  /* Instructions + controls */
+  .instructions-row{display:flex;gap:5px;overflow-x:auto;padding-bottom:8px;scrollbar-width:none;margin-bottom:9px}
+  .instructions-row::-webkit-scrollbar{display:none}
+  .chip{flex-shrink:0;background:rgba(0,229,255,.07);border:1px solid rgba(0,229,255,.18);color:#a0d8e8;padding:5px 11px;border-radius:100px;font-size:10px;white-space:nowrap}
+  .controls{display:flex;gap:7px;align-items:center}
+  .btn{flex:1;padding:12px;border-radius:9px;border:none;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:500;cursor:pointer;transition:all .2s}
+  .btn-start{background:var(--accent);color:#050a0f}
+  .btn-stop{background:rgba(255,71,87,.12);color:var(--danger);border:1px solid rgba(255,71,87,.25)}
+  .btn-reset{background:rgba(123,47,255,.12);color:var(--purple);border:1px solid rgba(123,47,255,.25);flex:0;padding:12px 13px}
+  .fps-badge{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);color:#2a4455;padding:6px 9px;border-radius:7px;font-size:10px;font-family:'DM Mono',monospace;white-space:nowrap;flex:0}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="back-btn" onclick="history.back()">←</button>
+  <span class="page-title">📱 Terapist</span>
+  <div class="spacer"></div>
+  <span class="session-badge" id="sessionDisplay">—</span>
+  <div class="status-dot" id="statusDot"></div>
+</div>
+
+<div class="camera-wrap">
+  <video id="localVideo" autoplay playsinline muted></video>
+  <canvas id="overlayCanvas"></canvas>
+  <div class="fl-curve"><div class="fl-curve-lbl">EĞRİ TİPİ</div><div class="fl-curve-type" id="curveType">—</div></div>
+  <div class="fl-score"><div class="fl-score-num" id="scoreNum">—</div><div class="fl-score-lbl">SKOR</div></div>
+  <div class="fl-mock" id="mockBadge">⚠ DEMO</div>
+  <div class="phase-bar-wrap">
+    <div class="phase-label"><span id="phaseName">—</span><span id="phaseTimer">—s</span></div>
+    <div class="phase-bar-bg"><div class="phase-bar-fill" id="phaseBar"></div></div>
+  </div>
+</div>
+
+<div class="bottom">
+  <!-- Schroth postür metrikleri -->
+  <div class="section-title">Schroth Postür Analizi</div>
+  <div class="metrics-grid">
+    <div class="metric"><div class="metric-val" id="mOmuz">—°</div><div class="metric-name">OMUZ</div></div>
+    <div class="metric"><div class="metric-val" id="mKalca">—°</div><div class="metric-name">KALÇA</div></div>
+    <div class="metric"><div class="metric-val" id="mTrunk">—°</div><div class="metric-name">GÖVDE</div></div>
+    <div class="metric"><div class="metric-val" id="mKayma">—%</div><div class="metric-name">KAYMA</div></div>
+    <div class="metric"><div class="metric-val" id="mBest" style="color:#2ed573">—</div><div class="metric-name">EN İYİ</div></div>
+  </div>
+
+  <!-- Skolyoz açı paneli — orijinal model_point4.pt çıktısı -->
+  <div class="scol-panel">
+    <div class="section-title">Skolyoz Açıları — T / TL / L <span id="scolEstTag" style="display:none;color:#3a3a5a">(tahmin)</span></div>
+    <div class="scol-grid">
+      <div class="scol-item normal" id="scolT">
+        <div class="scol-val" id="scolTVal">—°</div>
+        <div class="scol-lbl">THORACİK</div>
+        <div class="scol-badge" id="scolTLbl">—</div>
+      </div>
+      <div class="scol-item normal" id="scolTL">
+        <div class="scol-val" id="scolTLVal">—°</div>
+        <div class="scol-lbl">T-LUMBAR</div>
+        <div class="scol-badge" id="scolTLLbl">—</div>
+      </div>
+      <div class="scol-item normal" id="scolL">
+        <div class="scol-val" id="scolLVal">—°</div>
+        <div class="scol-lbl">LUMBAR</div>
+        <div class="scol-badge" id="scolLLbl">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Talimatlar -->
+  <div class="instructions-row" id="instructionsList"><div class="chip">Kamerayı başlatın...</div></div>
+
+  <!-- Kontroller -->
+  <div class="controls">
+    <button class="btn btn-start" id="startBtn" onclick="startCamera()">🎥 Başlat</button>
+    <button class="btn btn-stop" id="stopBtn" onclick="stopStream()" style="display:none">⏹ Durdur</button>
+    <button class="btn btn-reset" onclick="resetSession()" title="Seans sıfırla">↺</button>
+    <span class="fps-badge" id="fpsBadge">— FPS</span>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+const SESSION = new URLSearchParams(location.search).get('session') || localStorage.getItem('schroth_session') || 'DEFAULT';
+document.getElementById('sessionDisplay').textContent = SESSION;
+let socket, stream, frameInterval, frameCount=0, lastFpsTime=Date.now();
+
+function initSocket() {
+  socket = io();
+  socket.on('connect', () => { document.getElementById('statusDot').classList.add('connected'); socket.emit('join_room',{room:SESSION,role:'phone'}); });
+  socket.on('disconnect', () => document.getElementById('statusDot').classList.remove('connected'));
+  socket.on('analysis', d => { if(d.analysis) updateUI(d.analysis); });
+}
+
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment',width:{ideal:1280},height:{ideal:720}},audio:false});
+    document.getElementById('localVideo').srcObject = stream;
+    document.getElementById('startBtn').style.display='none';
+    document.getElementById('stopBtn').style.display='block';
+    initSocket(); startFrameCapture();
+  } catch(e) { alert('Kamera: '+e.message); }
+}
+
+function stopStream() {
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  if(frameInterval) clearInterval(frameInterval);
+  if(socket) socket.disconnect();
+  document.getElementById('startBtn').style.display='block';
+  document.getElementById('stopBtn').style.display='none';
+  document.getElementById('statusDot').classList.remove('connected');
+}
+
+function startFrameCapture() {
+  const cv=document.createElement('canvas'), vd=document.getElementById('localVideo');
+  frameInterval = setInterval(() => {
+    if(!vd.videoWidth||!socket?.connected) return;
+    cv.width=vd.videoWidth; cv.height=vd.videoHeight;
+    cv.getContext('2d').drawImage(vd,0,0);
+    socket.emit('frame',{image:cv.toDataURL('image/jpeg',.7),room:SESSION});
+    frameCount++;
+    const now=Date.now();
+    if(now-lastFpsTime>=1000){document.getElementById('fpsBadge').textContent=frameCount+' FPS';frameCount=0;lastFpsTime=now;}
+  }, 125);
+}
+
+function resetSession() { if(socket?.connected) socket.emit('reset_session',{room:SESSION}); }
+
+// ── UI Güncelleme ──────────────────────────────────────────
+function updateUI(a) {
+  // Schroth skor
+  const score=a.score||0;
+  const se=document.getElementById('scoreNum');
+  se.textContent=score;
+  se.style.color=score>=80?'#2ed573':score>=55?'#ffa502':'#ff4757';
+  document.getElementById('curveType').textContent=a.curve_type||'—';
+  document.getElementById('mockBadge').style.display=a.mock?'block':'none';
+
+  // Schroth metrikler
+  document.getElementById('mOmuz').textContent=(a.shoulder_angle||0).toFixed(1)+'°';
+  document.getElementById('mKalca').textContent=(a.hip_angle||0).toFixed(1)+'°';
+  document.getElementById('mTrunk').textContent=(a.trunk_inclination||0).toFixed(1)+'°';
+  document.getElementById('mKayma').textContent=(a.lateral_shift_pct||0).toFixed(1)+'%';
+  if(a.session?.best_score) document.getElementById('mBest').textContent=Math.round(a.session.best_score);
+
+  // Talimatlar
+  const insts=[...(a.instructions||[])];
+  if(a.phase_instruction) insts.unshift('📋 '+a.phase_instruction);
+  if(insts.length) document.getElementById('instructionsList').innerHTML=insts.map(i=>`<div class="chip">${i}</div>`).join('');
+
+  // Faz
+  if(a.phase){
+    document.getElementById('phaseName').textContent=a.phase.name_tr||'—';
+    document.getElementById('phaseTimer').textContent=Math.round(a.phase.remaining_sec||0)+'s';
+    const bar=document.getElementById('phaseBar');
+    bar.style.width=((a.phase.progress||0)*100)+'%';
+    bar.style.backgroundColor=a.phase.color||'#00e5ff';
+  }
+
+  // ── Skolyoz açı paneli — orijinal model_point4.pt çıktısı
+  const scol = a.scoliosis;
+  if(scol) {
+    updateScolItem('scolT', 'scolTVal', 'scolTLbl', scol.thoracic, scol.labels?.thoracic);
+    updateScolItem('scolTL','scolTLVal','scolTLLbl', scol.thoracolumbar, scol.labels?.thoracolumbar);
+    updateScolItem('scolL', 'scolLVal', 'scolLLbl', scol.lumbar, scol.labels?.lumbar);
+    document.getElementById('scolEstTag').style.display = scol.estimated ? 'inline' : 'none';
+  }
+
+  // Overlay
+  if(a.keypoints) drawOverlay(a.keypoints, a, scol?.points);
+}
+
+function updateScolItem(itemId, valId, lblId, angle, label) {
+  const item = document.getElementById(itemId);
+  document.getElementById(valId).textContent = (angle||0).toFixed(1)+'°';
+  document.getElementById(lblId).textContent = label || '—';
+  const cls = !label ? 'normal' : label==='KRİTİK' ? 'kritik' : label==='ORTA' ? 'orta' : 'normal';
+  item.className = 'scol-item ' + cls;
+}
+
+// ── Overlay ────────────────────────────────────────────────
+function drawOverlay(kps, a, scolPoints) {
+  const canvas=document.getElementById('overlayCanvas'), vd=document.getElementById('localVideo');
+  if(!vd.videoWidth) return;
+  canvas.width=vd.clientWidth; canvas.height=vd.clientHeight;
+  const ctx=canvas.getContext('2d');
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const sx=canvas.width/vd.videoWidth, sy=canvas.height/vd.videoHeight;
+  const toC=pt=>pt?[pt[0]*sx,pt[1]*sy]:null;
+  const score=a.score||0;
+  const col=score>=80?'#2ed573':score>=55?'#ffa502':'#ff4757';
+  const line=(a,b,c,w,d=false)=>{if(!a||!b)return;ctx.beginPath();ctx.moveTo(a[0],a[1]);ctx.lineTo(b[0],b[1]);ctx.strokeStyle=c;ctx.lineWidth=w;ctx.setLineDash(d?[6,4]:[]);ctx.stroke();ctx.setLineDash([]);};
+  const mid=(a,b)=>a&&b?[(a[0]+b[0])/2,(a[1]+b[1])/2]:null;
+
+  // Schroth pose overlay
+  const ls=toC(kps.left_shoulder),rs=toC(kps.right_shoulder),lh=toC(kps.left_hip),rh=toC(kps.right_hip);
+  const lk=toC(kps.left_knee),rk=toC(kps.right_knee);
+  if(ls&&rs&&lh&&rh){
+    line(ls,rs,col,3); line(lh,rh,col,3);
+    line(ls,lh,'rgba(0,229,255,.5)',2,true); line(rs,rh,'rgba(0,229,255,.5)',2,true);
+    const sc=mid(ls,rs), hc=mid(lh,rh);
+    line(sc,hc,'rgba(255,255,255,.2)',1.5,true);
+    if(lk&&rk){line(lh,lk,'rgba(0,229,255,.3)',1.5,true);line(rh,rk,'rgba(0,229,255,.3)',1.5,true);line(lk,rk,col,1.5);}
+    [ls,rs,lh,rh,lk,rk].filter(Boolean).forEach(pt=>{ctx.beginPath();ctx.arc(pt[0],pt[1],6,0,Math.PI*2);ctx.fillStyle=col;ctx.fill();ctx.beginPath();ctx.arc(pt[0],pt[1],3.5,0,Math.PI*2);ctx.fillStyle='#050a0f';ctx.fill();});
+    if(sc&&Math.abs(a.shoulder_angle||0)>1){ctx.fillStyle=col;ctx.font='bold 12px sans-serif';ctx.fillText((a.shoulder_angle||0).toFixed(1)+'°',sc[0]+8,sc[1]-7);}
+  }
+
+  // ── Orijinal model_point4.pt noktaları — sarı çizgi ──
+  if(scolPoints && scolPoints.length >= 2) {
+    const scaledPts = scolPoints.map(p => [p[0]*sx, p[1]*sy]);
+    // Segmentler arası çizgi
+    ctx.beginPath();
+    ctx.moveTo(scaledPts[0][0], scaledPts[0][1]);
+    for(let i=1; i<scaledPts.length; i++) ctx.lineTo(scaledPts[i][0], scaledPts[i][1]);
+    ctx.strokeStyle = '#ffd700';
+    ctx.lineWidth = 3;
+    ctx.setLineDash([]);
+    ctx.stroke();
+    // Noktalar
+    scaledPts.forEach((pt, i) => {
+      ctx.beginPath();
+      ctx.arc(pt[0],pt[1],8,0,Math.PI*2);
+      ctx.fillStyle='#ffd700'; ctx.fill();
+      ctx.beginPath();
+      ctx.arc(pt[0],pt[1],5,0,Math.PI*2);
+      ctx.fillStyle='#050a0f'; ctx.fill();
+      // Nokta etiketi
+      const labels=['T1','T2','T3','T4'];
+      ctx.fillStyle='#ffd700';
+      ctx.font='bold 11px sans-serif';
+      ctx.fillText(labels[i]||i, pt[0]+10, pt[1]-5);
+    });
+  }
+}
+</script>
+</body>
+</html>

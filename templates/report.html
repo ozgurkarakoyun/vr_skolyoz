@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schroth VR — Seans Raporu</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--surface:#0d1821;--accent:#00e5ff;--purple:#7b2fff;--success:#2ed573;--warn:#ffa502;--danger:#ff4757}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:#e8f4f8;font-family:'DM Sans',sans-serif;min-height:100vh}
+
+  .topbar{display:flex;align-items:center;gap:12px;padding:14px 20px;background:rgba(0,0,0,.4);backdrop-filter:blur(10px);border-bottom:1px solid rgba(0,229,255,.08);position:sticky;top:0;z-index:10}
+  .back-btn{background:transparent;border:1px solid rgba(0,229,255,.2);color:var(--accent);padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer}
+  .page-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700}
+  .spacer{flex:1}
+  .clear-btn{background:transparent;border:1px solid rgba(255,71,87,.2);color:#ff4757;padding:6px 12px;border-radius:8px;font-size:11px;cursor:pointer}
+
+  .container{max-width:800px;margin:0 auto;padding:20px 16px}
+
+  /* Haftalık özet */
+  .weekly-card{background:var(--surface);border:1px solid rgba(0,229,255,.1);border-radius:16px;padding:22px 24px;margin-bottom:24px}
+  .section-title{font-family:'Syne',sans-serif;font-size:.8rem;font-weight:700;letter-spacing:2px;color:#2a4455;text-transform:uppercase;margin-bottom:16px}
+  .weekly-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+  .weekly-stat{text-align:center;padding:12px 6px;background:rgba(255,255,255,.03);border-radius:10px;border:1px solid rgba(255,255,255,.05)}
+  .weekly-val{font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:var(--accent)}
+  .weekly-name{font-size:9px;color:#2a4455;margin-top:3px;letter-spacing:1px}
+
+  /* Trend badge */
+  .trend-badge{display:inline-flex;align-items:center;gap:6px;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:500;margin-top:12px}
+  .trend-improving{background:rgba(46,213,115,.12);color:#2ed573;border:1px solid rgba(46,213,115,.25)}
+  .trend-declining{background:rgba(255,71,87,.12);color:#ff4757;border:1px solid rgba(255,71,87,.25)}
+  .trend-stable{background:rgba(255,255,255,.06);color:#5a7a8a;border:1px solid rgba(255,255,255,.1)}
+  .trend-insufficient_data{background:rgba(255,255,255,.04);color:#2a4455;border:1px solid rgba(255,255,255,.07)}
+
+  /* Skor mini grafik */
+  .chart-wrap{margin-top:16px}
+  canvas#weekChart{width:100%;height:80px;display:block}
+
+  /* Seans listesi */
+  .sessions-list{display:flex;flex-direction:column;gap:12px}
+  .session-card{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:18px 20px;cursor:pointer;transition:border-color .2s}
+  .session-card:hover{border-color:rgba(0,229,255,.2)}
+  .session-header{display:flex;align-items:center;gap:12px;margin-bottom:14px}
+  .session-date{font-size:12px;color:#5a7a8a}
+  .session-time{font-size:11px;color:#2a4455}
+  .session-score{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;margin-left:auto}
+  .session-metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .sm{background:rgba(255,255,255,.03);border-radius:7px;padding:6px 4px;text-align:center}
+  .sm-val{font-family:'DM Mono',monospace;font-size:.78rem;font-weight:500;color:var(--accent)}
+  .sm-name{font-size:8px;color:#2a4455;margin-top:1px}
+
+  /* Skolyoz satırı */
+  .scol-row-r{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px}
+  .scol-mini-r{border-radius:7px;padding:6px 4px;text-align:center;border:1px solid}
+  .scol-mini-r.normal{background:rgba(46,213,115,.05);border-color:rgba(46,213,115,.15)}
+  .scol-mini-r.orta{background:rgba(255,165,2,.05);border-color:rgba(255,165,2,.15)}
+  .scol-mini-r.kritik{background:rgba(255,71,87,.06);border-color:rgba(255,71,87,.2)}
+  .scol-mini-r-val{font-size:.78rem;font-weight:700}
+  .scol-mini-r.normal .scol-mini-r-val{color:#2ed573}
+  .scol-mini-r.orta .scol-mini-r-val{color:#ffa502}
+  .scol-mini-r.kritik .scol-mini-r-val{color:#ff4757}
+  .scol-mini-r-name{font-size:8px;color:#2a4455;margin-top:1px}
+
+  /* Faz log */
+  .phase-log{margin-top:10px;display:flex;gap:6px;flex-wrap:wrap}
+  .phase-chip{font-size:10px;padding:3px 9px;border-radius:100px;border:1px solid}
+  .phase-chip.elongation{background:rgba(0,229,255,.08);color:#00e5ff;border-color:rgba(0,229,255,.2)}
+  .phase-chip.derotation{background:rgba(123,47,255,.08);color:#a78bfa;border-color:rgba(123,47,255,.2)}
+  .phase-chip.rab_breathing{background:rgba(46,213,115,.08);color:#2ed573;border-color:rgba(46,213,115,.2)}
+  .phase-chip.stabilization{background:rgba(255,165,2,.08);color:#ffa502;border-color:rgba(255,165,2,.2)}
+
+  .empty-state{text-align:center;padding:60px 20px;color:#2a4455}
+  .empty-state .icon{font-size:3rem;margin-bottom:12px}
+  .empty-state p{font-size:.9rem;line-height:1.7}
+
+  footer{text-align:center;padding:32px 0;color:#1a2a35;font-size:11px}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <button class="back-btn" onclick="history.back()">← Geri</button>
+  <span class="page-title">📊 Seans Geçmişi</span>
+  <div class="spacer"></div>
+  <button class="clear-btn" onclick="clearHistory()">Temizle</button>
+</div>
+
+<div class="container">
+
+  <!-- Haftalık Özet -->
+  <div class="weekly-card" id="weeklyCard">
+    <div class="section-title">Bu Hafta</div>
+    <div class="weekly-grid">
+      <div class="weekly-stat"><div class="weekly-val" id="wSessions">—</div><div class="weekly-name">SEANS</div></div>
+      <div class="weekly-stat"><div class="weekly-val" id="wMinutes">—</div><div class="weekly-name">DAKİKA</div></div>
+      <div class="weekly-stat"><div class="weekly-val" id="wAvgScore">—</div><div class="weekly-name">ORT. SKOR</div></div>
+      <div class="weekly-stat"><div class="weekly-val" id="wBestScore" style="color:#2ed573">—</div><div class="weekly-name">EN İYİ</div></div>
+    </div>
+    <div id="trendBadge" class="trend-badge trend-insufficient_data">📊 Veri bekleniyor</div>
+    <!-- Mini trend grafiği -->
+    <div class="chart-wrap"><canvas id="weekChart"></canvas></div>
+  </div>
+
+  <!-- Seans Listesi -->
+  <div class="section-title" style="margin-bottom:14px">Seans Kayıtları</div>
+  <div class="sessions-list" id="sessionsList">
+    <div class="empty-state">
+      <div class="icon">📋</div>
+      <p>Henüz seans kaydı yok.<br>Quest ekranında egzersiz başlatın.</p>
+    </div>
+  </div>
+
+</div>
+
+<footer>Schroth VR © 2025 — Dr. Özgür Karakoyun</footer>
+
+<script src="/static/exercise_tracker.js"></script>
+<script>
+const tracker = window.exerciseTracker;
+
+function sevClass(label) {
+  return !label ? 'normal' : label === 'KRİTİK' ? 'kritik' : label === 'ORTA' ? 'orta' : 'normal';
+}
+
+function secToTime(s) {
+  const m = Math.floor(s/60), sec = s%60;
+  return m + ':' + (sec<10?'0':'') + sec;
+}
+
+function trendText(trend) {
+  const map = { improving:'📈 Gelişiyor', declining:'📉 Düşüş var', stable:'➡ Stabil', insufficient_data:'📊 Veri bekleniyor' };
+  return map[trend] || trend;
+}
+
+// ── Haftalık özet ──────────────────────────────────────────
+function renderWeekly() {
+  const w = tracker.getWeeklyStats();
+  if (!w) return;
+  document.getElementById('wSessions').textContent  = w.sessionCount;
+  document.getElementById('wMinutes').textContent   = w.totalMinutes;
+  document.getElementById('wAvgScore').textContent  = w.avgScore;
+  document.getElementById('wBestScore').textContent = w.bestScore;
+  const badge = document.getElementById('trendBadge');
+  badge.textContent  = trendText(w.trend);
+  badge.className = `trend-badge trend-${w.trend}`;
+}
+
+// ── Mini grafik ────────────────────────────────────────────
+function renderChart() {
+  const history = tracker.getSessionHistory(14);
+  if (!history.length) return;
+  const canvas = document.getElementById('weekChart');
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = 80 * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = 80;
+  ctx.clearRect(0, 0, W, H);
+
+  const scores = history.reverse().map(r => r.scores?.avg || 0);
+  const max = Math.max(...scores, 50), min = 0;
+  const step = W / (scores.length - 1 || 1);
+
+  // Gradient fill
+  const grad = ctx.createLinearGradient(0, 0, 0, H);
+  grad.addColorStop(0, 'rgba(0,229,255,.3)');
+  grad.addColorStop(1, 'rgba(0,229,255,.01)');
+
+  ctx.beginPath();
+  scores.forEach((s, i) => {
+    const x = i * step;
+    const y = H - (s - min) / (max - min) * (H - 10) - 5;
+    i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+  });
+  ctx.strokeStyle = '#00e5ff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Fill area
+  ctx.lineTo((scores.length-1) * step, H);
+  ctx.lineTo(0, H);
+  ctx.closePath();
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Dots
+  scores.forEach((s, i) => {
+    const x = i * step;
+    const y = H - (s - min) / (max - min) * (H - 10) - 5;
+    ctx.beginPath();
+    ctx.arc(x, y, 3, 0, Math.PI*2);
+    ctx.fillStyle = '#00e5ff';
+    ctx.fill();
+  });
+}
+
+// ── Seans kartları ─────────────────────────────────────────
+function renderSessions() {
+  const history = tracker.getSessionHistory(30);
+  const container = document.getElementById('sessionsList');
+
+  if (!history.length) return; // Empty state bırak
+
+  container.innerHTML = history.map(r => {
+    const scoreColor = r.scores.avg >= 80 ? '#2ed573' : r.scores.avg >= 55 ? '#ffa502' : '#ff4757';
+    const trendIcon = r.trend === 'improving' ? '📈' : r.trend === 'declining' ? '📉' : '➡';
+
+    const scolRow = r.scoliosis?.thoracic != null ? `
+      <div class="scol-row-r">
+        <div class="scol-mini-r normal">
+          <div class="scol-mini-r-val">${(r.scoliosis.thoracic||0).toFixed(1)}°</div>
+          <div class="scol-mini-r-name">THORACIC</div>
+        </div>
+        <div class="scol-mini-r normal">
+          <div class="scol-mini-r-val">${(r.scoliosis.thoracolumbar||0).toFixed(1)}°</div>
+          <div class="scol-mini-r-name">T-LUMBAR</div>
+        </div>
+        <div class="scol-mini-r normal">
+          <div class="scol-mini-r-val">${(r.scoliosis.lumbar||0).toFixed(1)}°</div>
+          <div class="scol-mini-r-name">LUMBAR</div>
+        </div>
+      </div>` : '';
+
+    const phaseChips = (r.phaseLog || []).slice(0, 6).map(p =>
+      `<span class="phase-chip ${p.id}">${p.name} ${p.duration}s (${p.avgScore})</span>`
+    ).join('');
+
+    return `
+    <div class="session-card">
+      <div class="session-header">
+        <div>
+          <div class="session-date">${r.date}</div>
+          <div class="session-time">${r.time} · ${secToTime(r.duration)} · ${r.repCount} tekrar ${trendIcon}</div>
+        </div>
+        <div class="session-score" style="color:${scoreColor}">${r.scores.avg}</div>
+      </div>
+      <div class="session-metrics">
+        <div class="sm"><div class="sm-val" style="color:${scoreColor}">${r.scores.avg}</div><div class="sm-name">ORT. SKOR</div></div>
+        <div class="sm"><div class="sm-val" style="color:#2ed573">${r.scores.best}</div><div class="sm-name">EN İYİ</div></div>
+        <div class="sm"><div class="sm-val">${secToTime(r.duration)}</div><div class="sm-name">SÜRE</div></div>
+        <div class="sm"><div class="sm-val" style="color:#00e5ff">${r.repCount}</div><div class="sm-name">TEKRAR</div></div>
+        <div class="sm"><div class="sm-val" style="color:#a78bfa">${r.trendValue > 0 ? '+':''}${r.trendValue}</div><div class="sm-name">TREND</div></div>
+      </div>
+      ${scolRow}
+      ${phaseChips ? `<div class="phase-log">${phaseChips}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function clearHistory() {
+  if (!confirm('Tüm seans geçmişi silinecek. Emin misiniz?')) return;
+  tracker.clearHistory();
+  document.getElementById('sessionsList').innerHTML = `
+    <div class="empty-state"><div class="icon">📋</div><p>Seans geçmişi temizlendi.</p></div>`;
+  document.getElementById('wSessions').textContent = '—';
+  document.getElementById('wMinutes').textContent = '—';
+  document.getElementById('wAvgScore').textContent = '—';
+  document.getElementById('wBestScore').textContent = '—';
+}
+
+// Init
+renderWeekly();
+renderSessions();
+window.addEventListener('resize', () => setTimeout(renderChart, 100));
+setTimeout(renderChart, 100);
+</script>
+</body>
+</html>

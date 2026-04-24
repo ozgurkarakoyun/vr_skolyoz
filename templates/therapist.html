@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schroth VR — Terapist Paneli</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--surface:#0d1821;--surface2:#111d28;--accent:#00e5ff;--purple:#7b2fff;--success:#2ed573;--warn:#ffa502;--danger:#ff4757;--border:rgba(255,255,255,.07)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:#e8f4f8;font-family:'DM Sans',sans-serif;min-height:100vh}
+
+  /* ── Topbar ── */
+  .topbar{display:flex;align-items:center;gap:12px;padding:13px 20px;background:rgba(0,0,0,.45);backdrop-filter:blur(10px);border-bottom:1px solid rgba(0,229,255,.08);position:sticky;top:0;z-index:20}
+  .logo{font-family:'Syne',sans-serif;font-size:1rem;font-weight:800;background:linear-gradient(135deg,#fff,var(--accent));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+  .spacer{flex:1}
+  .nav-link{color:#5a7a8a;font-size:12px;text-decoration:none;padding:5px 12px;border-radius:7px;transition:all .2s}
+  .nav-link:hover{color:var(--accent);background:rgba(0,229,255,.07)}
+  .nav-link.active{color:var(--accent);background:rgba(0,229,255,.1)}
+  .add-btn{background:var(--accent);color:#050a0f;border:none;padding:8px 18px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:6px}
+  .add-btn:hover{background:#00c8e0}
+
+  /* ── Layout ── */
+  .container{max-width:1100px;margin:0 auto;padding:24px 20px}
+
+  /* ── Stats row ── */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:28px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:18px 20px}
+  .stat-val{font-family:'Syne',sans-serif;font-size:1.8rem;font-weight:800;color:var(--accent)}
+  .stat-name{font-size:10px;letter-spacing:1.5px;color:#2a4455;margin-top:4px;text-transform:uppercase}
+
+  /* ── Search ── */
+  .search-row{display:flex;gap:10px;margin-bottom:20px}
+  .search-input{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 16px;color:#e8f4f8;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
+  .search-input:focus{border-color:rgba(0,229,255,.3)}
+  .search-input::placeholder{color:#2a4455}
+  .filter-select{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:10px 14px;color:#5a7a8a;font-family:'DM Sans',sans-serif;font-size:13px;cursor:pointer;outline:none}
+
+  /* ── Hasta kartları ── */
+  .patients-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+
+  .patient-card{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;cursor:pointer;transition:all .2s;position:relative}
+  .patient-card:hover{border-color:rgba(0,229,255,.25);transform:translateY(-2px);box-shadow:0 12px 40px rgba(0,0,0,.4)}
+
+  .pc-header{display:flex;align-items:flex-start;gap:12px;margin-bottom:14px}
+  .pc-avatar{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;font-family:'Syne',sans-serif;flex-shrink:0}
+  .pc-avatar.female{background:rgba(255,100,150,.15);color:#ff6496;border:1px solid rgba(255,100,150,.2)}
+  .pc-avatar.male{background:rgba(0,229,255,.1);color:var(--accent);border:1px solid rgba(0,229,255,.2)}
+  .pc-avatar.other{background:rgba(123,47,255,.12);color:#a78bfa;border:1px solid rgba(123,47,255,.2)}
+
+  .pc-name{font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:3px}
+  .pc-meta{font-size:11px;color:#2a4455}
+
+  .pc-curve{display:inline-block;background:rgba(123,47,255,.12);border:1px solid rgba(123,47,255,.2);color:#a78bfa;padding:3px 9px;border-radius:6px;font-size:10px;font-weight:600;margin-bottom:12px}
+
+  .pc-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:14px}
+  .pcm{background:rgba(255,255,255,.03);border-radius:7px;padding:7px;text-align:center}
+  .pcm-val{font-family:'DM Mono',monospace;font-size:.82rem;font-weight:500;color:var(--accent)}
+  .pcm-name{font-size:8px;color:#2a4455;margin-top:2px}
+
+  .pc-actions{display:flex;gap:7px}
+  .pc-btn{flex:1;padding:9px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .2s;text-align:center;text-decoration:none;display:block}
+  .pc-btn-primary{background:var(--accent);color:#050a0f}
+  .pc-btn-primary:hover{background:#00c8e0}
+  .pc-btn-secondary{background:rgba(123,47,255,.12);color:#a78bfa;border:1px solid rgba(123,47,255,.2)}
+  .pc-btn-secondary:hover{background:rgba(123,47,255,.2)}
+
+  .trend-dot{width:8px;height:8px;border-radius:50%;position:absolute;top:14px;right:14px}
+  .trend-improving{background:#2ed573;box-shadow:0 0 6px #2ed573}
+  .trend-declining{background:#ff4757;box-shadow:0 0 6px #ff4757}
+  .trend-stable{background:#ffa502}
+  .trend-insufficient_data{background:#2a4455}
+
+  /* ── Modal: Yeni Hasta ── */
+  .modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(8px);z-index:50;display:none;align-items:center;justify-content:center;padding:20px}
+  .modal-bg.open{display:flex}
+  .modal{background:#0a1520;border:1px solid rgba(0,229,255,.15);border-radius:20px;padding:28px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto}
+  .modal-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;margin-bottom:22px;display:flex;justify-content:space-between;align-items:center}
+  .modal-close{background:transparent;border:none;color:#5a7a8a;font-size:1.3rem;cursor:pointer}
+
+  .form-group{margin-bottom:16px}
+  .form-label{font-size:11px;letter-spacing:1px;color:#2a4455;text-transform:uppercase;margin-bottom:6px;display:block}
+  .form-input,.form-select,.form-textarea{width:100%;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);border-radius:9px;padding:10px 14px;color:#e8f4f8;font-family:'DM Sans',sans-serif;font-size:14px;outline:none;transition:border-color .2s}
+  .form-input:focus,.form-select:focus,.form-textarea:focus{border-color:rgba(0,229,255,.3)}
+  .form-textarea{resize:vertical;min-height:80px}
+  .form-select option{background:#0a1520}
+  .form-row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  .submit-btn{width:100%;padding:13px;background:var(--accent);color:#050a0f;border:none;border-radius:11px;font-family:'DM Sans',sans-serif;font-size:14px;font-weight:600;cursor:pointer;margin-top:8px}
+  .submit-btn:hover{background:#00c8e0}
+
+  /* ── Seans başlat modal ── */
+  .session-modal{background:#0a1520;border:1px solid rgba(0,229,255,.15);border-radius:20px;padding:28px;width:100%;max-width:420px}
+  .session-id-big{font-family:'Syne',sans-serif;font-size:2.5rem;font-weight:800;letter-spacing:8px;color:var(--accent);text-align:center;padding:20px 0;border:1px solid rgba(0,229,255,.15);border-radius:12px;margin:16px 0;background:rgba(0,229,255,.04)}
+  .qr-placeholder{text-align:center;color:#2a4455;font-size:.85rem;margin-top:8px}
+
+  .empty-state{text-align:center;padding:60px 20px;color:#2a4455;grid-column:1/-1}
+  .empty-state .icon{font-size:3rem;margin-bottom:14px}
+
+  footer{text-align:center;padding:32px 0;color:#1a2a35;font-size:11px}
+</style>
+</head>
+<body>
+
+<!-- Topbar -->
+<div class="topbar">
+  <span class="logo">Schroth VR</span>
+  <div class="spacer"></div>
+  <a href="/" class="nav-link">Ana Sayfa</a>
+  <a href="/therapist" class="nav-link active">Terapist</a>
+  <a href="/report" class="nav-link">Raporlar</a>
+  <button class="add-btn" onclick="openAddModal()">+ Yeni Hasta</button>
+</div>
+
+<div class="container">
+
+  <!-- İstatistik satırı -->
+  <div class="stats-row">
+    <div class="stat-card">
+      <div class="stat-val" id="statPatients">—</div>
+      <div class="stat-name">Toplam Hasta</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="statSessions" style="color:#a78bfa">—</div>
+      <div class="stat-name">Toplam Seans</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="statAvgScore" style="color:#2ed573">—</div>
+      <div class="stat-name">Ort. Skor</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-val" id="statImproving" style="color:#ffa502">—</div>
+      <div class="stat-name">Gelişen Hasta</div>
+    </div>
+  </div>
+
+  <!-- Arama -->
+  <div class="search-row">
+    <input class="search-input" id="searchInput" placeholder="Hasta adı ara..." oninput="filterPatients()">
+    <select class="filter-select" id="filterCurve" onchange="filterPatients()">
+      <option value="">Tüm Eğri Tipleri</option>
+      <option value="3c">3c</option>
+      <option value="3cp">3cp</option>
+      <option value="4c">4c</option>
+      <option value="4cp">4cp</option>
+    </select>
+    <select class="filter-select" id="filterTrend" onchange="filterPatients()">
+      <option value="">Tüm Trendler</option>
+      <option value="improving">Gelişiyor</option>
+      <option value="stable">Stabil</option>
+      <option value="declining">Düşüş</option>
+    </select>
+  </div>
+
+  <!-- Hasta listesi -->
+  <div class="patients-grid" id="patientsGrid">
+    <div class="empty-state"><div class="icon">👤</div><p>Yükleniyor...</p></div>
+  </div>
+
+</div>
+
+<footer>Schroth VR © 2025 — Dr. Özgür Karakoyun</footer>
+
+<!-- Yeni Hasta Modal -->
+<div class="modal-bg" id="addModal">
+  <div class="modal">
+    <div class="modal-title">
+      Yeni Hasta Ekle
+      <button class="modal-close" onclick="closeAddModal()">✕</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Ad Soyad *</label>
+      <input class="form-input" id="fName" placeholder="Hasta adı soyadı">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Doğum Yılı</label>
+        <input class="form-input" id="fBirth" type="number" placeholder="2005" min="1940" max="2024">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cinsiyet</label>
+        <select class="form-select" id="fGender">
+          <option value="—">Belirtilmemiş</option>
+          <option value="K">Kadın</option>
+          <option value="E">Erkek</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Tanı</label>
+      <input class="form-input" id="fDiagnosis" placeholder="AIS, Dejeneratif skolyoz...">
+    </div>
+    <div class="form-row">
+      <div class="form-group">
+        <label class="form-label">Schroth Eğri Tipi</label>
+        <select class="form-select" id="fCurve">
+          <option value="">Bilinmiyor</option>
+          <option value="3c">3c</option>
+          <option value="3cp">3cp</option>
+          <option value="4c">4c</option>
+          <option value="4cp">4cp</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cobb Açısı (°)</label>
+        <input class="form-input" id="fCobb" type="number" placeholder="0" min="0" max="120">
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Risser Grade (0–5)</label>
+      <input class="form-input" id="fRisser" type="number" placeholder="0" min="0" max="5">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Notlar</label>
+      <textarea class="form-textarea" id="fNotes" placeholder="Klinik notlar..."></textarea>
+    </div>
+    <button class="submit-btn" onclick="submitPatient()">Hastayı Kaydet</button>
+  </div>
+</div>
+
+<!-- Seans Başlat Modal -->
+<div class="modal-bg" id="sessionModal">
+  <div class="session-modal">
+    <div class="modal-title">
+      Seans Başlat
+      <button class="modal-close" onclick="closeSessionModal()">✕</button>
+    </div>
+    <div style="font-size:13px;color:#5a7a8a;margin-bottom:4px">Hasta</div>
+    <div style="font-family:'Syne',sans-serif;font-size:1rem;font-weight:700;margin-bottom:16px" id="smPatientName">—</div>
+    <div style="font-size:11px;letter-spacing:1.5px;color:#2a4455;margin-bottom:4px">SEANS KODU</div>
+    <div class="session-id-big" id="smSessionCode">—</div>
+    <div class="qr-placeholder" id="smQrWrap"></div>
+    <div style="display:flex;flex-direction:column;gap:9px;margin-top:20px">
+      <a id="smPhoneLink" href="#" target="_blank" style="display:block;padding:12px;background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);color:var(--accent);border-radius:10px;text-align:center;text-decoration:none;font-size:13px;font-weight:500">📱 Terapist Ekranını Aç</a>
+      <a id="smQuestLink" href="#" target="_blank" style="display:block;padding:12px;background:rgba(123,47,255,.1);border:1px solid rgba(123,47,255,.2);color:#a78bfa;border-radius:10px;text-align:center;text-decoration:none;font-size:13px;font-weight:500">🥽 Quest Ekranını Aç</a>
+    </div>
+  </div>
+</div>
+
+<script>
+let allPatients = [];
+
+// ── Hasta Listesi ──────────────────────────────────────────
+async function loadPatients() {
+  try {
+    const r = await fetch('/api/patients');
+    allPatients = await r.json();
+    renderStats();
+    renderPatients(allPatients);
+  } catch(e) {
+    document.getElementById('patientsGrid').innerHTML =
+      '<div class="empty-state"><div class="icon">⚠️</div><p>Sunucu bağlantısı kurulamadı.</p></div>';
+  }
+}
+
+function renderStats() {
+  const total = allPatients.length;
+  const totalSessions = allPatients.reduce((a,p) => a+(p.session_count||0), 0);
+  const avgScores = allPatients.filter(p=>p.overall_avg_score).map(p=>p.overall_avg_score);
+  const avgScore = avgScores.length ? Math.round(avgScores.reduce((a,b)=>a+b,0)/avgScores.length) : '—';
+
+  document.getElementById('statPatients').textContent  = total;
+  document.getElementById('statSessions').textContent  = totalSessions;
+  document.getElementById('statAvgScore').textContent  = avgScore;
+}
+
+function renderPatients(patients) {
+  const grid = document.getElementById('patientsGrid');
+  if (!patients.length) {
+    grid.innerHTML = '<div class="empty-state"><div class="icon">👤</div><p>Henüz hasta eklenmemiş.<br>Sağ üstteki "+ Yeni Hasta" butonunu kullanın.</p></div>';
+    return;
+  }
+
+  grid.innerHTML = patients.map(p => {
+    const gender   = p.gender === 'K' ? 'female' : p.gender === 'E' ? 'male' : 'other';
+    const genderCh = p.gender === 'K' ? '♀' : p.gender === 'E' ? '♂' : '?';
+    const age      = p.birth_year ? (new Date().getFullYear() - p.birth_year) + ' yaş' : '—';
+    const lastSess = p.last_session ? new Date(p.last_session).toLocaleDateString('tr-TR') : 'Seans yok';
+
+    return `
+    <div class="patient-card" onclick="openPatientDetail(${p.id})">
+      <div class="trend-dot trend-insufficient_data" id="trend_${p.id}"></div>
+      <div class="pc-header">
+        <div class="pc-avatar ${gender}">${genderCh}</div>
+        <div>
+          <div class="pc-name">${p.name}</div>
+          <div class="pc-meta">${age} · ${lastSess}</div>
+        </div>
+      </div>
+      ${p.curve_type ? `<div class="pc-curve">Schroth ${p.curve_type}</div>` : ''}
+      <div class="pc-metrics">
+        <div class="pcm">
+          <div class="pcm-val">${p.session_count||0}</div>
+          <div class="pcm-name">SEANS</div>
+        </div>
+        <div class="pcm">
+          <div class="pcm-val" style="color:${(p.cobb_angle||0)>40?'#ff4757':(p.cobb_angle||0)>20?'#ffa502':'#2ed573'}">${p.cobb_angle||0}°</div>
+          <div class="pcm-name">COBB</div>
+        </div>
+        <div class="pcm">
+          <div class="pcm-val" style="color:#2ed573">${p.overall_avg_score ? Math.round(p.overall_avg_score) : '—'}</div>
+          <div class="pcm-name">ORT. SKOR</div>
+        </div>
+      </div>
+      <div class="pc-actions">
+        <button class="pc-btn pc-btn-primary" onclick="event.stopPropagation();openSessionModal(${p.id},'${escHtml(p.name)}')">▶ Seans Başlat</button>
+        <a class="pc-btn pc-btn-secondary" href="/patient/${p.id}" onclick="event.stopPropagation()">📋 Detay</a>
+      </div>
+    </div>`;
+  }).join('');
+
+  // Trend noktaları için async yükle
+  patients.forEach(p => {
+    if (p.session_count > 0) {
+      fetch(`/api/patients/${p.id}/stats`)
+        .then(r => r.json())
+        .then(stats => {
+          const dot = document.getElementById('trend_'+p.id);
+          if (dot) dot.className = `trend-dot trend-${stats.trend||'insufficient_data'}`;
+        }).catch(()=>{});
+    }
+  });
+}
+
+function filterPatients() {
+  const q    = document.getElementById('searchInput').value.toLowerCase();
+  const curve= document.getElementById('filterCurve').value;
+  const trend= document.getElementById('filterTrend').value;
+  const filtered = allPatients.filter(p => {
+    const matchName  = !q || p.name.toLowerCase().includes(q);
+    const matchCurve = !curve || p.curve_type === curve;
+    return matchName && matchCurve;
+  });
+  renderPatients(filtered);
+}
+
+// ── Yeni Hasta Modal ──────────────────────────────────────
+function openAddModal() { document.getElementById('addModal').classList.add('open'); }
+function closeAddModal(){ document.getElementById('addModal').classList.remove('open'); }
+
+async function submitPatient() {
+  const name = document.getElementById('fName').value.trim();
+  if (!name) { alert('Ad Soyad zorunludur'); return; }
+
+  const body = {
+    name,
+    birth_year: parseInt(document.getElementById('fBirth').value) || null,
+    gender:     document.getElementById('fGender').value,
+    diagnosis:  document.getElementById('fDiagnosis').value,
+    curve_type: document.getElementById('fCurve').value,
+    cobb_angle: parseFloat(document.getElementById('fCobb').value) || 0,
+    risser:     parseInt(document.getElementById('fRisser').value) || 0,
+    notes:      document.getElementById('fNotes').value,
+  };
+
+  try {
+    const r = await fetch('/api/patients', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    if (r.ok) {
+      closeAddModal();
+      loadPatients();
+      // Form temizle
+      ['fName','fBirth','fDiagnosis','fCobb','fRisser','fNotes'].forEach(id =>
+        document.getElementById(id).value = '');
+    } else {
+      alert('Kayıt hatası');
+    }
+  } catch(e) { alert('Sunucu hatası: ' + e.message); }
+}
+
+// ── Seans Başlat Modal ────────────────────────────────────
+let currentSessionPatientId = null;
+let currentSessionCode = null;
+
+function openSessionModal(patientId, patientName) {
+  currentSessionPatientId = patientId;
+  currentSessionCode = generateCode();
+  document.getElementById('smPatientName').textContent = patientName;
+  document.getElementById('smSessionCode').textContent = currentSessionCode;
+
+  const base = window.location.origin;
+  document.getElementById('smPhoneLink').href  = `${base}/phone?session=${currentSessionCode}&patient=${patientId}`;
+  document.getElementById('smQuestLink').href  = `${base}/quest?session=${currentSessionCode}&patient=${patientId}`;
+
+  // QR kodu
+  const qrWrap = document.getElementById('smQrWrap');
+  qrWrap.innerHTML = '<div style="margin:12px auto;width:100px;height:100px;background:rgba(0,0,0,.3);border-radius:8px;display:flex;align-items:center;justify-content:center;color:#2a4455;font-size:11px">QR yükleniyor...</div>';
+  loadQR(`${base}/quest?session=${currentSessionCode}&patient=${patientId}`, qrWrap);
+
+  document.getElementById('sessionModal').classList.add('open');
+
+  // DB'ye seans kaydı oluştur
+  fetch('/api/sessions/start', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ patient_id: patientId, session_code: currentSessionCode })
+  }).catch(()=>{});
+}
+
+function closeSessionModal() {
+  document.getElementById('sessionModal').classList.remove('open');
+}
+
+function loadQR(url, container) {
+  const script = document.createElement('script');
+  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+  script.onload = () => {
+    container.innerHTML = '';
+    const div = document.createElement('div');
+    container.appendChild(div);
+    new QRCode(div, { text: url, width: 100, height: 100, colorDark:'#050a0f', colorLight:'#ffffff' });
+  };
+  document.head.appendChild(script);
+}
+
+// ── Hasta Detay ───────────────────────────────────────────
+function openPatientDetail(pid) {
+  window.location.href = `/patient/${pid}`;
+}
+
+// ── Utils ─────────────────────────────────────────────────
+function generateCode() {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  return Array.from({length:6}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function escHtml(s) { return s.replace(/'/g, "\\'"); }
+
+// Modal dışına tıkla kapat
+document.querySelectorAll('.modal-bg').forEach(el => {
+  el.addEventListener('click', e => { if(e.target === el) el.classList.remove('open'); });
+});
+
+// Init
+loadPatients();
+</script>
+</body>
+</html>

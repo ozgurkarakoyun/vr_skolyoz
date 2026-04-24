@@ -1,0 +1,479 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schroth VR — Skolyoz Rehabilitasyonu</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #050a0f;
+    --surface: #0d1821;
+    --accent: #00e5ff;
+    --accent2: #7b2fff;
+    --text: #e8f4f8;
+    --muted: #5a7a8a;
+    --phone-color: #00e5ff;
+    --quest-color: #7b2fff;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Sans', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(0,229,255,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,229,255,0.03) 1px, transparent 1px);
+    background-size: 60px 60px;
+    animation: gridMove 20s linear infinite;
+    pointer-events: none;
+  }
+
+  @keyframes gridMove {
+    0% { transform: translate(0, 0); }
+    100% { transform: translate(60px, 60px); }
+  }
+
+  .container {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 0 24px;
+  }
+
+  /* Header */
+  header {
+    padding: 40px 0 20px;
+    text-align: center;
+    position: relative;
+  }
+
+  .logo-badge {
+    display: inline-block;
+    background: linear-gradient(135deg, rgba(0,229,255,0.15), rgba(123,47,255,0.15));
+    border: 1px solid rgba(0,229,255,0.3);
+    padding: 6px 18px;
+    border-radius: 100px;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 24px;
+  }
+
+  h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: clamp(2.5rem, 6vw, 4.5rem);
+    font-weight: 800;
+    line-height: 1.05;
+    background: linear-gradient(135deg, #ffffff 0%, var(--accent) 50%, var(--accent2) 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 16px;
+  }
+
+  .subtitle {
+    color: var(--muted);
+    font-size: 1.1rem;
+    font-weight: 300;
+    letter-spacing: 0.5px;
+  }
+
+  /* Session ID */
+  .session-panel {
+    background: var(--surface);
+    border: 1px solid rgba(0,229,255,0.15);
+    border-radius: 16px;
+    padding: 24px 32px;
+    margin: 40px 0 32px;
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    flex-wrap: wrap;
+  }
+
+  .session-label {
+    font-size: 12px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    min-width: 100px;
+  }
+
+  .session-id-display {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: var(--accent);
+    letter-spacing: 6px;
+    flex: 1;
+  }
+
+  .btn-new-session {
+    background: transparent;
+    border: 1px solid rgba(0,229,255,0.3);
+    color: var(--accent);
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-new-session:hover {
+    background: rgba(0,229,255,0.1);
+  }
+
+  /* Device cards */
+  .devices {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 48px;
+  }
+
+  @media (max-width: 600px) {
+    .devices { grid-template-columns: 1fr; }
+  }
+
+  .device-card {
+    background: var(--surface);
+    border-radius: 20px;
+    padding: 36px 32px;
+    text-decoration: none;
+    color: var(--text);
+    position: relative;
+    overflow: hidden;
+    transition: transform 0.3s, box-shadow 0.3s;
+    display: block;
+  }
+
+  .device-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    transition: opacity 0.3s;
+  }
+
+  .device-card.phone {
+    border: 1px solid rgba(0,229,255,0.2);
+  }
+  .device-card.phone::before {
+    background: radial-gradient(circle at 0% 0%, rgba(0,229,255,0.08) 0%, transparent 60%);
+  }
+
+  .device-card.quest {
+    border: 1px solid rgba(123,47,255,0.2);
+  }
+  .device-card.quest::before {
+    background: radial-gradient(circle at 100% 0%, rgba(123,47,255,0.08) 0%, transparent 60%);
+  }
+
+  .device-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+  }
+  .device-card:hover::before { opacity: 1; }
+
+  .device-icon {
+    font-size: 3rem;
+    margin-bottom: 20px;
+    display: block;
+  }
+
+  .device-tag {
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: 500;
+  }
+  .phone .device-tag { color: var(--phone-color); }
+  .quest .device-tag { color: var(--quest-color); }
+
+  .device-card h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin-bottom: 12px;
+  }
+
+  .device-card p {
+    color: var(--muted);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    margin-bottom: 24px;
+  }
+
+  .device-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+
+  .phone .device-btn {
+    background: rgba(0,229,255,0.12);
+    color: var(--phone-color);
+    border: 1px solid rgba(0,229,255,0.3);
+  }
+  .phone:hover .device-btn {
+    background: rgba(0,229,255,0.2);
+  }
+
+  .quest .device-btn {
+    background: rgba(123,47,255,0.12);
+    color: var(--quest-color);
+    border: 1px solid rgba(123,47,255,0.3);
+  }
+  .quest:hover .device-btn {
+    background: rgba(123,47,255,0.2);
+  }
+
+  .arrow { font-size: 1.1rem; }
+
+  /* Flow diagram */
+  .flow {
+    background: var(--surface);
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 40px;
+  }
+
+  .flow-title {
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 20px;
+  }
+
+  .flow-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .flow-step {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255,255,255,0.03);
+    border-radius: 10px;
+    padding: 12px 16px;
+  }
+
+  .flow-num {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+  .flow-step:nth-child(1) .flow-num { background: rgba(0,229,255,0.2); color: var(--accent); }
+  .flow-step:nth-child(3) .flow-num { background: rgba(255,165,0,0.2); color: #ffa500; }
+  .flow-step:nth-child(5) .flow-num { background: rgba(123,47,255,0.2); color: var(--accent2); }
+
+  .flow-text { font-size: 13px; color: var(--muted); }
+  .flow-arrow { color: rgba(255,255,255,0.2); font-size: 1.2rem; }
+
+  footer {
+    text-align: center;
+    padding: 32px 0;
+    color: var(--muted);
+    font-size: 12px;
+    letter-spacing: 1px;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div class="logo-badge">Schroth VR System</div>
+    <h1>Skolyoz<br>Rehabilitasyonu</h1>
+    <p class="subtitle">Gerçek zamanlı postür analizi ile VR rehberliği</p>
+  </header>
+
+  <!-- Session Panel -->
+  <div class="session-panel">
+    <span class="session-label">Seans ID</span>
+    <span class="session-id-display" id="sessionId">—</span>
+    <button class="btn-new-session" onclick="generateSession()">Yeni Seans</button>
+  </div>
+
+  <!-- Device Cards -->
+  <div class="devices">
+    <a href="#" class="device-card phone" id="phoneLink">
+      <span class="device-icon">📱</span>
+      <div class="device-tag">Terapist / Asistan</div>
+      <h2>Telefon</h2>
+      <p>Hastanın sırtını arka kamerayla çekin. AI gerçek zamanlı analiz yapar ve VR gözlüğe iletir.</p>
+      <span class="device-btn">Telefon Modunu Aç <span class="arrow">→</span></span>
+    </a>
+
+    <a href="#" class="device-card quest" id="questLink">
+      <span class="device-icon">🥽</span>
+      <div class="device-tag">Hasta</div>
+      <h2>Meta Quest</h2>
+      <p>Hastanın sırtını stereo VR görüntüde izleyin. Schroth rehberleri ve nefes talimatları görüntülenir.</p>
+      <span class="device-btn">Quest Modunu Aç <span class="arrow">→</span></span>
+    </a>
+  </div>
+
+  <!-- Flow -->
+  <div class="flow">
+    <div class="flow-title">Sistem Akışı</div>
+    <div class="flow-steps">
+      <div class="flow-step">
+        <div class="flow-num">1</div>
+        <span class="flow-text">📱 Telefon kamera görüntüsü</span>
+      </div>
+      <span class="flow-arrow">›</span>
+      <div class="flow-step">
+        <div class="flow-num">2</div>
+        <span class="flow-text">🧠 YOLO AI analiz + Schroth sınıflama</span>
+      </div>
+      <span class="flow-arrow">›</span>
+      <div class="flow-step">
+        <div class="flow-num">3</div>
+        <span class="flow-text">🥽 Quest VR görüntü + rehber overlay</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Server Status -->
+  <div style="background:#0d1821;border:1px solid rgba(255,255,255,.06);border-radius:14px;padding:20px 28px;margin-bottom:32px;display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+    <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#5a7a8a;min-width:80px">SUNUCU</div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;flex:1">
+      <span id="statusPose" style="font-size:12px;color:#2a4455">⏳ Pose model kontrol ediliyor...</span>
+      <span id="statusScol" style="font-size:12px;color:#2a4455">⏳ Skolyoz model kontrol ediliyor...</span>
+      <span id="statusSessions" style="font-size:12px;color:#2a4455">⏳ Aktif seans...</span>
+    </div>
+    <div id="serverDot" style="width:8px;height:8px;border-radius:50%;background:#ff4757;flex-shrink:0"></div>
+  </div>
+
+  <!-- QR Kodu alanı -->
+  <div id="qrSection" style="background:#0d1821;border:1px solid rgba(0,229,255,.1);border-radius:14px;padding:20px 28px;margin-bottom:24px;display:none">
+    <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#5a7a8a;margin-bottom:14px">QR — Quest İçin Tara</div>
+    <div style="display:flex;gap:20px;align-items:center;flex-wrap:wrap">
+      <canvas id="qrCanvas" width="120" height="120" style="border-radius:8px;background:#fff;padding:6px"></canvas>
+      <div>
+        <div style="font-size:12px;color:#5a7a8a;margin-bottom:6px">Quest tarayıcısında bu QR'ı tarayın:</div>
+        <div id="questFullUrl" style="font-size:11px;color:#00e5ff;word-break:break-all;font-family:monospace">—</div>
+      </div>
+    </div>
+  </div>
+
+  <div style="text-align:center;margin-bottom:24px">
+    <a href="/therapist" style="display:inline-flex;align-items:center;gap:8px;background:rgba(123,47,255,.08);border:1px solid rgba(123,47,255,.2);color:#a78bfa;padding:10px 22px;border-radius:10px;text-decoration:none;font-size:13px;transition:all .2s;margin-right:8px" onmouseover="this.style.borderColor='rgba(123,47,255,.4)'" onmouseout="this.style.borderColor='rgba(123,47,255,.2)'">👤 Terapist Paneli</a>
+    <a href="/report" style="display:inline-flex;align-items:center;gap:8px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);color:#5a7a8a;padding:10px 22px;border-radius:10px;text-decoration:none;font-size:13px;transition:all .2s" onmouseover="this.style.borderColor='rgba(0,229,255,.2)';this.style.color='#00e5ff'" onmouseout="this.style.borderColor='rgba(255,255,255,.08)';this.style.color='#5a7a8a'">📊 Seans Geçmişi & Raporlar</a>
+  </div>
+  <footer>Schroth VR © 2025 — Dr. Özgür Karakoyun</footer>
+</div>
+
+<script>
+  function generateSession() {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+    let id = '';
+    for (let i = 0; i < 6; i++) {
+      id += chars[Math.floor(Math.random() * chars.length)];
+    }
+    localStorage.setItem('schroth_session', id);
+    document.getElementById('sessionId').textContent = id;
+    updateLinks(id);
+    generateQR(id);
+    return id;
+  }
+
+  function updateLinks(id) {
+    document.getElementById('phoneLink').href = `/phone?session=${id}`;
+    document.getElementById('questLink').href = `/quest?session=${id}`;
+  }
+
+  // Server health check
+  async function checkHealth() {
+    try {
+      const r = await fetch('/health');
+      const d = await r.json();
+      document.getElementById('serverDot').style.background = '#2ed573';
+      document.getElementById('statusPose').textContent = '✅ Pose model hazır';
+      document.getElementById('statusPose').style.color = '#2ed573';
+      document.getElementById('statusScol').textContent = d.scol_model ? '✅ Skolyoz model hazır' : '⚠ Skolyoz model yok (tahmin modu)';
+      document.getElementById('statusScol').style.color = d.scol_model ? '#2ed573' : '#ffa502';
+      document.getElementById('statusSessions').textContent = `📊 ${d.active_sessions || 0} aktif seans`;
+      document.getElementById('statusSessions').style.color = '#5a7a8a';
+    } catch(e) {
+      document.getElementById('serverDot').style.background = '#ff4757';
+      document.getElementById('statusPose').textContent = '❌ Sunucu yanıt vermiyor';
+      document.getElementById('statusPose').style.color = '#ff4757';
+    }
+  }
+
+  // QR kodu üret (basit canvas implementasyonu)
+  function generateQR(sessionId) {
+    const base = window.location.origin;
+    const url = `${base}/quest?session=${sessionId}`;
+    document.getElementById('questFullUrl').textContent = url;
+    document.getElementById('qrSection').style.display = 'block';
+    // QR kütüphanesi yükle ve oluştur
+    const script = document.createElement('script');
+    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js';
+    script.onload = () => {
+      const canvas = document.getElementById('qrCanvas');
+      canvas.width = 120; canvas.height = 120;
+      try {
+        new QRCode(canvas, {
+          text: url, width: 120, height: 120,
+          colorDark: '#050a0f', colorLight: '#ffffff',
+          correctLevel: QRCode.CorrectLevel.M
+        });
+      } catch(e) {
+        // QRCode div versiyonu kullan
+        const div = document.createElement('div');
+        canvas.parentNode.insertBefore(div, canvas);
+        canvas.style.display = 'none';
+        new QRCode(div, { text: url, width: 120, height: 120 });
+      }
+    };
+    document.head.appendChild(script);
+  }
+
+  // Init
+  window.onload = () => {
+    let id = localStorage.getItem('schroth_session');
+    if (!id) id = generateSession();
+    else {
+      document.getElementById('sessionId').textContent = id;
+      updateLinks(id);
+      generateQR(id);
+    }
+    checkHealth();
+    setInterval(checkHealth, 30000); // Her 30 saniyede bir kontrol
+  };
+</script>
+</body>
+</html>

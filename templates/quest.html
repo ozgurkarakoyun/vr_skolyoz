@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schroth VR — Quest</title>
+<style>
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:#000;color:#fff;font-family:system-ui,sans-serif;height:100dvh;overflow:hidden;display:flex;flex-direction:column}
+  #normalUI{flex:1;display:flex;flex-direction:column;background:#050a0f;color:#e8f4f8}
+  .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:rgba(0,0,0,.5);backdrop-filter:blur(10px);border-bottom:1px solid rgba(123,47,255,.2);flex-shrink:0}
+  .session-badge{background:rgba(123,47,255,.15);border:1px solid rgba(123,47,255,.3);color:#a78bfa;padding:3px 12px;border-radius:100px;font-size:11px;letter-spacing:2px}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:#ff4757}
+  .status-dot.connected{background:#2ed573;animation:pulse 2s infinite}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+  .feed-area{flex:1;position:relative;background:#000;display:flex;align-items:center;justify-content:center;overflow:hidden;min-height:0}
+  .no-feed{text-align:center;color:#2a4455}
+  .no-feed .icon{font-size:3rem;margin-bottom:12px}
+  .no-feed p{font-size:.85rem;line-height:1.7}
+
+  .info-overlay{position:absolute;inset:0;pointer-events:none}
+  .score-box{position:absolute;top:12px;right:12px;background:rgba(5,10,15,.9);border:1px solid rgba(123,47,255,.3);border-radius:12px;padding:8px 12px;text-align:center;min-width:68px}
+  .score-num{font-size:1.7rem;font-weight:800;line-height:1;color:#5a7a8a;transition:color .5s}
+  .score-lbl{font-size:8px;letter-spacing:1.5px;color:#2a4455;margin-top:1px}
+  .curve-box{position:absolute;top:12px;left:12px;background:rgba(5,10,15,.9);border:1px solid rgba(123,47,255,.3);border-radius:9px;padding:6px 12px;font-size:1rem;font-weight:800;color:#a78bfa}
+  .curve-box small{display:block;font-size:8px;font-weight:400;color:#2a4455}
+
+  /* Skolyoz açı kutuları - sağ taraf */
+  .scol-overlay{position:absolute;top:68px;right:12px;display:flex;flex-direction:column;gap:5px}
+  .scol-angle-box{background:rgba(5,10,15,.88);border-radius:8px;padding:6px 10px;text-align:center;min-width:72px;border:1px solid}
+  .scol-angle-box.normal{border-color:rgba(46,213,115,.25)}
+  .scol-angle-box.orta{border-color:rgba(255,165,2,.25)}
+  .scol-angle-box.kritik{border-color:rgba(255,71,87,.3)}
+  .scol-angle-val{font-size:.9rem;font-weight:700;line-height:1}
+  .scol-angle-box.normal .scol-angle-val{color:#2ed573}
+  .scol-angle-box.orta .scol-angle-val{color:#ffa502}
+  .scol-angle-box.kritik .scol-angle-val{color:#ff4757}
+  .scol-angle-name{font-size:8px;color:#2a4455;margin-top:2px}
+
+  .phase-box{position:absolute;top:68px;left:12px;background:rgba(5,10,15,.88);border:1px solid rgba(0,229,255,.2);border-radius:8px;padding:6px 10px}
+  .phase-name{font-size:10px;color:#00e5ff;font-weight:500}
+  .phase-time{font-size:9px;color:#2a4455;margin-top:1px}
+  .phase-prog{height:2px;background:rgba(255,255,255,.08);border-radius:2px;margin-top:4px;overflow:hidden;width:80px}
+  .phase-prog-fill{height:100%;width:0%;border-radius:2px;transition:width 1s linear}
+
+  .ticker{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(to top,rgba(5,10,15,.95),transparent);padding:24px 16px 12px}
+  .ticker-main{font-size:.9rem;color:#00e5ff;text-align:center;margin-bottom:3px}
+  .ticker-breath{font-size:.75rem;color:rgba(167,139,250,.7);text-align:center}
+
+  .bottom{background:rgba(5,10,15,.97);border-top:1px solid rgba(255,255,255,.05);padding:12px 16px;flex-shrink:0}
+  .section-title{font-size:9px;letter-spacing:1.5px;color:#2a4455;margin-bottom:6px}
+  .metrics{display:grid;grid-template-columns:repeat(5,1fr);gap:5px;margin-bottom:10px}
+  .metric{background:rgba(255,255,255,.03);border-radius:7px;padding:6px 3px;text-align:center}
+  .metric-val{font-size:.8rem;font-weight:700;color:#a78bfa}
+  .metric-name{font-size:8px;color:#2a4455;margin-top:1px}
+
+  /* Skolyoz özet row */
+  .scol-row{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin-bottom:10px}
+  .scol-mini{border-radius:7px;padding:6px 4px;text-align:center;border:1px solid}
+  .scol-mini.normal{background:rgba(46,213,115,.05);border-color:rgba(46,213,115,.2)}
+  .scol-mini.orta{background:rgba(255,165,2,.05);border-color:rgba(255,165,2,.2)}
+  .scol-mini.kritik{background:rgba(255,71,87,.07);border-color:rgba(255,71,87,.2)}
+  .scol-mini-val{font-size:.8rem;font-weight:700}
+  .scol-mini.normal .scol-mini-val{color:#2ed573}
+  .scol-mini.orta .scol-mini-val{color:#ffa502}
+  .scol-mini.kritik .scol-mini-val{color:#ff4757}
+  .scol-mini-name{font-size:8px;color:#2a4455;margin-top:1px}
+
+  .btn-row{display:flex;gap:7px}
+  .vr-btn{flex:1;padding:13px;background:linear-gradient(135deg,#7b2fff,#5200cc);border:none;border-radius:11px;color:#fff;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .2s}
+  .vr-btn:hover{opacity:.9}
+  .vr-btn:disabled{opacity:.4;cursor:not-allowed}
+  .reset-btn{background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#5a7a8a;padding:13px 15px;border-radius:11px;cursor:pointer}
+  #vrCanvas{display:none;width:100vw;height:100vh;position:fixed;inset:0}
+</style>
+</head>
+<body>
+<div id="normalUI">
+  <div class="topbar">
+    <button onclick="history.back()" style="background:transparent;border:1px solid rgba(123,47,255,.3);color:#a78bfa;padding:5px 11px;border-radius:8px;cursor:pointer;font-size:11px">← Geri</button>
+    <span style="font-weight:700;font-size:.9rem">🥽 Quest Modu</span>
+    <span class="session-badge" id="sessionDisplay">—</span>
+    <div class="status-dot" id="statusDot"></div>
+  </div>
+
+  <div class="feed-area">
+    <div class="no-feed" id="noFeed">
+      <div class="icon">📱</div>
+      <p>Telefon bağlantısı bekleniyor...<br>Aynı Seans ID ile telefonu açın.</p>
+    </div>
+    <div class="info-overlay" id="infoOverlay" style="display:none">
+      <div class="curve-box" id="curveBox"><small>EĞRİ TİPİ</small>—</div>
+      <div class="score-box"><div class="score-num" id="scoreNum">—</div><div class="score-lbl">SKOR</div></div>
+
+      <!-- Skolyoz açıları - sağ üst -->
+      <div class="scol-overlay">
+        <div class="scol-angle-box normal" id="scolT2">
+          <div class="scol-angle-val" id="scolT2Val">—°</div>
+          <div class="scol-angle-name">THORACİK</div>
+        </div>
+        <div class="scol-angle-box normal" id="scolTL2">
+          <div class="scol-angle-val" id="scolTL2Val">—°</div>
+          <div class="scol-angle-name">T-LUMBAR</div>
+        </div>
+        <div class="scol-angle-box normal" id="scolL2">
+          <div class="scol-angle-val" id="scolL2Val">—°</div>
+          <div class="scol-angle-name">LUMBAR</div>
+        </div>
+      </div>
+
+      <div class="phase-box">
+        <div class="phase-name" id="phaseDisp">—</div>
+        <div class="phase-time" id="phaseTimeDisp">—s</div>
+        <div class="phase-prog"><div class="phase-prog-fill" id="phaseProgFill"></div></div>
+      </div>
+      <div class="ticker">
+        <div class="ticker-main" id="tickerMain">Telefonu başlatın...</div>
+        <div class="ticker-breath" id="tickerBreath"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bottom">
+    <div class="section-title">Schroth Postür</div>
+    <div class="metrics">
+      <div class="metric"><div class="metric-val" id="mOmuz">—°</div><div class="metric-name">OMUZ</div></div>
+      <div class="metric"><div class="metric-val" id="mKalca">—°</div><div class="metric-name">KALÇA</div></div>
+      <div class="metric"><div class="metric-val" id="mTrunk">—°</div><div class="metric-name">GÖVDE</div></div>
+      <div class="metric"><div class="metric-val" id="mRep">0</div><div class="metric-name">TEKRAR</div></div>
+      <div class="metric"><div class="metric-val" id="mAvg" style="color:#2ed573">—</div><div class="metric-name">ORT.</div></div>
+    </div>
+    <div class="section-title">Skolyoz Açıları (T / TL / L)</div>
+    <div class="scol-row">
+      <div class="scol-mini normal" id="sm_T"><div class="scol-mini-val" id="sm_TVal">—°</div><div class="scol-mini-name">THORACIC</div></div>
+      <div class="scol-mini normal" id="sm_TL"><div class="scol-mini-val" id="sm_TLVal">—°</div><div class="scol-mini-name">T-LUMBAR</div></div>
+      <div class="scol-mini normal" id="sm_L"><div class="scol-mini-val" id="sm_LVal">—°</div><div class="scol-mini-name">LUMBAR</div></div>
+    </div>
+    <!-- Nefes metronom -->
+    <div id="breathBar" style="display:none;margin-bottom:10px">
+      <div style="font-size:9px;letter-spacing:1.5px;color:#2a4455;margin-bottom:5px;display:flex;justify-content:space-between"><span>NEFES</span><span id="breathLabel" style="color:#2ed573">—</span></div>
+      <div style="height:6px;background:rgba(255,255,255,.06);border-radius:6px;overflow:hidden"><div id="breathFill" style="height:100%;width:0%;border-radius:6px;transition:width 0.3s,background-color 0.5s;background:#2ed573"></div></div>
+    </div>
+    <!-- Seans istatistikleri -->
+    <div id="liveStats" style="display:none;margin-bottom:10px">
+      <div style="font-size:9px;letter-spacing:1.5px;color:#2a4455;margin-bottom:5px">CANLI SEANS</div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:5px">
+        <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:6px;text-align:center"><div style="font-size:.8rem;font-weight:700;color:#a78bfa" id="lsDur">0:00</div><div style="font-size:8px;color:#2a4455;margin-top:1px">SÜRE</div></div>
+        <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:6px;text-align:center"><div style="font-size:.8rem;font-weight:700;color:#2ed573" id="lsBest">—</div><div style="font-size:8px;color:#2a4455;margin-top:1px">EN İYİ</div></div>
+        <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:6px;text-align:center"><div style="font-size:.8rem;font-weight:700;color:#00e5ff" id="lsRep">0</div><div style="font-size:8px;color:#2a4455;margin-top:1px">TEKRAR</div></div>
+        <div style="background:rgba(255,255,255,.03);border-radius:7px;padding:6px;text-align:center"><div style="font-size:.8rem;font-weight:700;color:#ffa502" id="lsAvg">—</div><div style="font-size:8px;color:#2a4455;margin-top:1px">ORT.</div></div>
+      </div>
+    </div>
+    <div class="btn-row">
+      <button class="reset-btn" onclick="resetSession()" title="Seans sıfırla">↺</button>
+      <button id="audioBtn" onclick="toggleAudio()" style="background:rgba(255,255,255,.05);border:1px solid rgba(255,255,255,.1);color:#5a7a8a;padding:13px 15px;border-radius:11px;cursor:pointer;font-size:1rem" title="Ses">🔇</button>
+      <button class="vr-btn" id="vrBtn" onclick="enterVR()" disabled>🥽 VR Modunu Başlat</button>
+      <button id="endBtn" onclick="handleEndSession()" style="display:none;flex:1;padding:13px;background:rgba(46,213,115,.12);border:1px solid rgba(46,213,115,.25);color:#2ed573;border-radius:11px;cursor:pointer;font-size:13px;font-weight:600">✅ Seansı Bitir</button>
+    </div>
+  </div>
+</div>
+<canvas id="vrCanvas"></canvas>
+
+<script src="/static/audio_engine.js"></script>
+<script src="/static/exercise_tracker.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+<script>
+const SESSION = new URLSearchParams(location.search).get('session') || localStorage.getItem('schroth_session') || 'DEFAULT';
+document.getElementById('sessionDisplay').textContent = SESSION;
+
+let socket, xrSession=null, xrRefSpace=null, gl=null, tex=null, offCanvas=null, offCtx=null;
+let latestAnalysis=null, hasFeed=false;
+let tickerList=[], tickerIdx=0;
+
+setInterval(() => {
+  if(tickerList.length){ tickerIdx=(tickerIdx+1)%tickerList.length; document.getElementById('tickerMain').textContent=tickerList[tickerIdx]; }
+}, 3500);
+
+function initSocket() {
+  socket=io();
+  socket.on('connect', () => { document.getElementById('statusDot').classList.add('connected'); socket.emit('join_room',{room:SESSION,role:'quest'}); });
+  socket.on('disconnect', () => document.getElementById('statusDot').classList.remove('connected'));
+  socket.on('analysis', d => {
+    latestAnalysis=d.analysis;
+    updateNormalUI(d.analysis);
+    if(!hasFeed&&d.analysis){ hasFeed=true; document.getElementById('noFeed').style.display='none'; document.getElementById('infoOverlay').style.display='block'; document.getElementById('vrBtn').disabled=false; }
+  });
+  socket.on('session_reset', () => { hasFeed=false; document.getElementById('noFeed').style.display='flex'; document.getElementById('infoOverlay').style.display='none'; document.getElementById('vrBtn').disabled=true; });
+}
+
+function resetSession() { if(socket?.connected) socket.emit('reset_session',{room:SESSION}); }
+
+function sevClass(label) { return !label?'normal':label==='KRİTİK'?'kritik':label==='ORTA'?'orta':'normal'; }
+
+function updateNormalUI(a) {
+  if(!a) return;
+  const score=a.score||0;
+  const se=document.getElementById('scoreNum');
+  se.textContent=score; se.style.color=score>=80?'#2ed573':score>=55?'#ffa502':'#ff4757';
+  document.getElementById('curveBox').innerHTML=`<small>EĞRİ TİPİ</small>${a.curve_type||'—'}`;
+  document.getElementById('mOmuz').textContent=(a.shoulder_angle||0).toFixed(1)+'°';
+  document.getElementById('mKalca').textContent=(a.hip_angle||0).toFixed(1)+'°';
+  document.getElementById('mTrunk').textContent=(a.trunk_inclination||0).toFixed(1)+'°';
+  if(a.session){ document.getElementById('mRep').textContent=a.session.rep_count||0; document.getElementById('mAvg').textContent=Math.round(a.session.avg_score||0); }
+  if(a.phase){ document.getElementById('phaseDisp').textContent=a.phase.name_tr||'—'; document.getElementById('phaseTimeDisp').textContent=Math.round(a.phase.remaining_sec||0)+'s'; const pf=document.getElementById('phaseProgFill'); pf.style.width=((a.phase.progress||0)*100)+'%'; pf.style.backgroundColor=a.phase.color||'#00e5ff'; }
+  if(a.instructions?.length) tickerList=a.instructions;
+  if(a.breath_instruction) document.getElementById('tickerBreath').textContent=a.breath_instruction;
+
+  // Skolyoz açıları
+  const scol = a.scoliosis;
+  if(scol) {
+    // Floating overlay kutuları
+    updateScolBox2('scolT2','scolT2Val', scol.thoracic, scol.labels?.thoracic);
+    updateScolBox2('scolTL2','scolTL2Val', scol.thoracolumbar, scol.labels?.thoracolumbar);
+    updateScolBox2('scolL2','scolL2Val', scol.lumbar, scol.labels?.lumbar);
+    // Alt panel
+    updateScolMini('sm_T','sm_TVal', scol.thoracic, scol.labels?.thoracic);
+    updateScolMini('sm_TL','sm_TLVal', scol.thoracolumbar, scol.labels?.thoracolumbar);
+    updateScolMini('sm_L','sm_LVal', scol.lumbar, scol.labels?.lumbar);
+  }
+}
+
+function updateScolBox2(itemId, valId, angle, label) {
+  const el=document.getElementById(itemId); if(!el) return;
+  document.getElementById(valId).textContent=(angle||0).toFixed(1)+'°';
+  el.className='scol-angle-box '+sevClass(label);
+}
+
+function updateScolMini(itemId, valId, angle, label) {
+  const el=document.getElementById(itemId); if(!el) return;
+  document.getElementById(valId).textContent=(angle||0).toFixed(1)+'°';
+  el.className='scol-mini '+sevClass(label);
+}
+
+// ── WebXR ────────────────────────────────────────────────────
+async function enterVR() {
+  if(!navigator.xr){ alert('WebXR desteklenmiyor.'); return; }
+  if(!await navigator.xr.isSessionSupported('immersive-vr')){ alert('immersive-vr desteklenmiyor.'); return; }
+  const canvas=document.getElementById('vrCanvas');
+  gl=canvas.getContext('webgl2',{xrCompatible:true});
+  xrSession=await navigator.xr.requestSession('immersive-vr',{requiredFeatures:['local']});
+  xrSession.addEventListener('end',()=>{ document.getElementById('normalUI').style.display='flex'; canvas.style.display='none'; xrSession=null; });
+  await xrSession.updateRenderState({baseLayer:new XRWebGLLayer(xrSession,gl)});
+  xrRefSpace=await xrSession.requestReferenceSpace('local');
+  document.getElementById('normalUI').style.display='none';
+  canvas.style.display='block';
+  xrSession.requestAnimationFrame(onXRFrame);
+}
+
+function onXRFrame(time,frame) {
+  xrSession.requestAnimationFrame(onXRFrame);
+  const pose=frame.getViewerPose(xrRefSpace);
+  if(!pose) return;
+  const glLayer=xrSession.renderState.baseLayer;
+  gl.bindFramebuffer(gl.FRAMEBUFFER,glLayer.framebuffer);
+  gl.clearColor(0,0,0,1); gl.clear(gl.COLOR_BUFFER_BIT|gl.DEPTH_BUFFER_BIT);
+  for(const view of pose.views) { const vp=glLayer.getViewport(view); gl.viewport(vp.x,vp.y,vp.width,vp.height); renderEye(vp,latestAnalysis); }
+}
+
+function getOff(w,h) {
+  if(!offCanvas||offCanvas.width!==w||offCanvas.height!==h){ offCanvas=new OffscreenCanvas(w,h); offCtx=offCanvas.getContext('2d'); }
+  return {c:offCanvas,ctx:offCtx};
+}
+
+function renderEye(vp,a) {
+  const {c,ctx}=getOff(vp.width,vp.height);
+  const w=vp.width,h=vp.height,cx=w/2,cy=h/2;
+  ctx.fillStyle='#050a0f'; ctx.fillRect(0,0,w,h);
+  ctx.strokeStyle='rgba(0,229,255,.04)'; ctx.lineWidth=1;
+  for(let x=0;x<w;x+=40){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,h);ctx.stroke();}
+  for(let y=0;y<h;y+=40){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(w,y);ctx.stroke();}
+  if(a) drawVRScene(ctx,w,h,cx,cy,a);
+  else { ctx.fillStyle='rgba(0,229,255,.5)';ctx.font=`bold ${Math.round(h*.04)}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('Telefon bekleniyor...',cx,cy); }
+  if(!tex){tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);}
+  gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,c);
+}
+
+function drawVRScene(ctx,w,h,cx,cy,a) {
+  const score=a.score||0;
+  const col=score>=80?'#2ed573':score>=55?'#ffa502':'#ff4757';
+  const scol=a.scoliosis;
+
+  // Skor halkası
+  const r=h*.11;
+  ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.strokeStyle=col+'30';ctx.lineWidth=4;ctx.stroke();
+  ctx.beginPath();ctx.arc(cx,cy,r,-Math.PI/2,-Math.PI/2+(score/100)*Math.PI*2);ctx.strokeStyle=col;ctx.lineWidth=6;ctx.lineCap='round';ctx.stroke();
+  ctx.fillStyle=col;ctx.font=`bold ${Math.round(h*.065)}px system-ui`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(score,cx,cy-h*.008);
+  ctx.fillStyle='rgba(255,255,255,.25)';ctx.font=`${Math.round(h*.02)}px system-ui`;ctx.fillText('SKOR',cx,cy+h*.05);
+
+  // Sol panel — Schroth
+  ctx.textAlign='left';
+  ctx.fillStyle='#a78bfa';ctx.font=`bold ${Math.round(h*.028)}px system-ui`;ctx.fillText(`Eğri: ${a.curve_type||'—'}`,w*.04,h*.1);
+  ctx.fillStyle='rgba(0,229,255,.7)';ctx.font=`${Math.round(h*.023)}px system-ui`;
+  ctx.fillText(`Omuz: ${(a.shoulder_angle||0).toFixed(1)}°`,w*.04,h*.15);
+  ctx.fillText(`Kalça: ${(a.hip_angle||0).toFixed(1)}°`,w*.04,h*.185);
+  ctx.fillText(`Gövde: ${(a.trunk_inclination||0).toFixed(1)}°`,w*.04,h*.22);
+
+  // Sağ panel — Skolyoz T/TL/L (orijinal model çıktısı)
+  if(scol) {
+    ctx.textAlign='right';
+    ctx.fillStyle='#ffd700';ctx.font=`bold ${Math.round(h*.024)}px system-ui`;
+    ctx.fillText('SKOLYOZ AÇILARI',w*.96,h*.1);
+    const angles=[
+      {name:'T',val:scol.thoracic,lbl:scol.labels?.thoracic},
+      {name:'TL',val:scol.thoracolumbar,lbl:scol.labels?.thoracolumbar},
+      {name:'L',val:scol.lumbar,lbl:scol.labels?.lumbar},
+    ];
+    angles.forEach((ang,i)=>{
+      const yp=h*(.14+i*.04);
+      const c2=ang.lbl==='KRİTİK'?'#ff4757':ang.lbl==='ORTA'?'#ffa502':'#2ed573';
+      ctx.fillStyle=c2;ctx.font=`bold ${Math.round(h*.023)}px system-ui`;
+      ctx.fillText(`${ang.name}: ${(ang.val||0).toFixed(1)}° [${ang.lbl||'—'}]`,w*.96,yp);
+    });
+    if(scol.estimated){ ctx.fillStyle='rgba(255,255,255,.3)';ctx.font=`${Math.round(h*.017)}px system-ui`;ctx.fillText('(tahmin)',w*.96,h*.27); }
+  }
+
+  // Omuz çizgisi
+  const lineY=cy-h*.26,lineLen=w*.3;
+  const tilt=(a.shoulder_angle||0)*.018;
+  ctx.save();ctx.translate(cx,lineY);ctx.rotate(tilt);
+  ctx.beginPath();ctx.moveTo(-lineLen/2,0);ctx.lineTo(lineLen/2,0);ctx.strokeStyle=col;ctx.lineWidth=4;ctx.lineCap='round';ctx.setLineDash([]);ctx.stroke();
+  ctx.beginPath();ctx.moveTo(-lineLen/2,0);ctx.lineTo(lineLen/2,0);ctx.strokeStyle='rgba(255,255,255,.1)';ctx.lineWidth=1.5;ctx.setLineDash([8,6]);ctx.stroke();ctx.setLineDash([]);ctx.restore();
+  ctx.fillStyle='rgba(255,255,255,.3)';ctx.font=`${Math.round(h*.018)}px system-ui`;ctx.textAlign='center';ctx.fillText('── OMUZ HATTI ──',cx,lineY-h*.035);
+
+  // Faz
+  if(a.phase){ ctx.textAlign='center';ctx.fillStyle=a.phase.color||'#00e5ff';ctx.font=`bold ${Math.round(h*.022)}px system-ui`;ctx.fillText(a.phase.name_tr||'—',cx,h*.72);ctx.fillStyle='rgba(255,255,255,.3)';ctx.font=`${Math.round(h*.018)}px system-ui`;ctx.fillText(Math.round(a.phase.remaining_sec||0)+'s kaldı',cx,h*.745); }
+
+  // Ana talimat
+  const inst=(a.instructions||[])[0]||'';
+  if(inst){const ty=h*.8;ctx.fillStyle='rgba(0,0,0,.5)';ctx.beginPath();ctx.roundRect(cx-w*.4,ty-h*.035,w*.8,h*.075,10);ctx.fill();ctx.fillStyle='#00e5ff';ctx.font=`${Math.round(h*.026)}px system-ui`;ctx.textAlign='center';ctx.fillText(inst,cx,ty+h*.005);}
+
+  // Nefes talimatı
+  const breath=a.breath_instruction||'🫁 RAB — Konkav tarafa nefes al';
+  ctx.fillStyle='rgba(123,47,255,.12)';ctx.beginPath();ctx.roundRect(cx-w*.22,h*.9,w*.44,h*.045,7);ctx.fill();ctx.fillStyle='#a78bfa';ctx.font=`${Math.round(h*.019)}px system-ui`;ctx.textAlign='center';ctx.fillText(breath,cx,h*.928);
+}
+
+// ── Seans Sonu Kayıt ──────────────────────────────────────
+async function endAndSaveSession() {
+  const stats = exerciseTracker.getLiveStats();
+  const report = exerciseTracker.endSession();
+  const scol = latestAnalysis?.scoliosis;
+
+  const payload = {
+    duration:           report?.duration || stats?.duration || 0,
+    frame_count:        report?.frameCount || stats?.frameCount || 0,
+    avg_score:          report?.scores?.avg || stats?.avgScore || 0,
+    best_score:         report?.scores?.best || stats?.bestScore || 0,
+    rep_count:          report?.repCount || stats?.repCount || 0,
+    avg_thoracic:       scol?.thoracic || null,
+    avg_thoracolumbar:  scol?.thoracolumbar || null,
+    avg_lumbar:         scol?.lumbar || null,
+    avg_shoulder:       latestAnalysis?.shoulder_angle || null,
+    avg_hip:            latestAnalysis?.hip_angle || null,
+    trend:              report?.trend || 'stable',
+    phase_log:          report?.phaseLog || [],
+    notes:              '',
+  };
+
+  try {
+    await fetch(`/api/sessions/${SESSION}/end`, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    console.log('[Session] Saved to DB');
+    return payload;
+  } catch(e) {
+    console.warn('[Session] Save failed:', e);
+    return payload;
+  }
+}
+
+// ── PDF İndir ─────────────────────────────────────────────
+function downloadPDF() {
+  const pid = latestAnalysis?.patient_id;
+  const url = pid
+    ? `/api/patients/${pid}/report.pdf`
+    : `/api/sessions/${SESSION}/report.pdf`;
+  window.open(url, '_blank');
+}
+
+initSocket();
+
+// ── Tracker & Audio Init ─────────────────────────────────
+exerciseTracker.startSession(SESSION);
+document.getElementById('liveStats').style.display = 'block';
+
+// Nefes metronom event
+window.addEventListener('breathPhase', (e) => {
+  const p = e.detail;
+  const bar = document.getElementById('breathFill');
+  const lbl = document.getElementById('breathLabel');
+  const breathBar = document.getElementById('breathBar');
+  if(p.phase === 'idle'){ breathBar.style.display='none'; return; }
+  breathBar.style.display='block';
+  if(p.phase === 'in'){
+    bar.style.background='#2ed573'; bar.style.width='100%';
+    lbl.textContent='Nefes Al ↑'; lbl.style.color='#2ed573';
+  } else if(p.phase === 'hold'){
+    bar.style.background='#ffa502'; bar.style.width='100%';
+    lbl.textContent='Tut ●'; lbl.style.color='#ffa502';
+  } else if(p.phase === 'out'){
+    bar.style.background='#00e5ff'; bar.style.width='20%';
+    lbl.textContent='Nefes Ver ↓'; lbl.style.color='#00e5ff';
+  }
+});
+
+// Canlı istatistik güncelle
+setInterval(() => {
+  const stats = exerciseTracker.getLiveStats();
+  if(!stats) return;
+  const min = Math.floor(stats.duration/60);
+  const sec = stats.duration%60;
+  document.getElementById('lsDur').textContent = min+':'+(sec<10?'0':'')+sec;
+  document.getElementById('lsBest').textContent = stats.bestScore||'—';
+  document.getElementById('lsRep').textContent  = stats.repCount;
+  document.getElementById('lsAvg').textContent  = stats.avgScore||'—';
+}, 1000);
+
+function toggleAudio() {
+  const enabled = schrothAudio.toggle();
+  const btn = document.getElementById('audioBtn');
+  btn.textContent = enabled ? '🔊' : '🔇';
+  btn.style.color = enabled ? '#00e5ff' : '#5a7a8a';
+  btn.style.borderColor = enabled ? 'rgba(0,229,255,.3)' : 'rgba(255,255,255,.1)';
+}
+
+// Tracker güncelleme — analysis eventine bağla
+let prevAnalysis = null;
+const _origUpdateNormalUI = updateNormalUI;
+// Seans başladığında Bitir butonu göster
+socket.on('peer_joined', () => {
+  document.getElementById('endBtn').style.display = 'block';
+});
+
+async function handleEndSession() {
+  if (!confirm('Seansı bitirmek ve kaydetmek istiyor musunuz?')) return;
+  const payload = await endAndSaveSession();
+  schrothAudio.disable();
+  document.getElementById('endBtn').textContent = '✅ Kaydedildi';
+  document.getElementById('endBtn').disabled = true;
+  // PDF indirme seçeneği
+  setTimeout(() => {
+    const dl = confirm('Seans raporu PDF olarak indirilsin mi?');
+    if (dl) downloadPDF();
+  }, 800);
+}
+
+window.updateNormalUI = function(a) {
+  _origUpdateNormalUI(a);
+  exerciseTracker.update(a);
+  schrothAudio.update(a, prevAnalysis);
+  prevAnalysis = a;
+};
+</script>
+</body>
+</html>

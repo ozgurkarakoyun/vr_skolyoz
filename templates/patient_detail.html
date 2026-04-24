@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Schroth VR — Hasta Detayı</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#050a0f;--surface:#0d1821;--accent:#00e5ff;--purple:#7b2fff;--success:#2ed573;--warn:#ffa502;--danger:#ff4757;--border:rgba(255,255,255,.07)}
+  *{margin:0;padding:0;box-sizing:border-box}
+  body{background:var(--bg);color:#e8f4f8;font-family:'DM Sans',sans-serif;min-height:100vh}
+
+  .topbar{display:flex;align-items:center;gap:12px;padding:13px 20px;background:rgba(0,0,0,.45);backdrop-filter:blur(10px);border-bottom:1px solid rgba(0,229,255,.08);position:sticky;top:0;z-index:20}
+  .back-btn{background:transparent;border:1px solid rgba(0,229,255,.2);color:var(--accent);padding:6px 14px;border-radius:8px;font-size:12px;cursor:pointer;text-decoration:none}
+  .spacer{flex:1}
+  .start-btn{background:var(--accent);color:#050a0f;border:none;padding:8px 18px;border-radius:9px;font-family:'DM Sans',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
+  .delete-btn{background:transparent;border:1px solid rgba(255,71,87,.2);color:#ff4757;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer}
+
+  .container{max-width:900px;margin:0 auto;padding:24px 20px}
+
+  /* Hasta profil başlığı */
+  .profile-header{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px 28px;margin-bottom:22px;display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+  .avatar{width:60px;height:60px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:1.6rem;font-weight:700;font-family:'Syne',sans-serif;flex-shrink:0}
+  .avatar.female{background:rgba(255,100,150,.15);color:#ff6496;border:1px solid rgba(255,100,150,.2)}
+  .avatar.male{background:rgba(0,229,255,.1);color:var(--accent);border:1px solid rgba(0,229,255,.2)}
+  .avatar.other{background:rgba(123,47,255,.12);color:#a78bfa;border:1px solid rgba(123,47,255,.2)}
+
+  .profile-info{flex:1}
+  .profile-name{font-family:'Syne',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:6px}
+  .profile-meta{font-size:12px;color:#5a7a8a;display:flex;gap:14px;flex-wrap:wrap;margin-bottom:12px}
+  .profile-tags{display:flex;gap:7px;flex-wrap:wrap}
+  .tag{display:inline-block;padding:4px 10px;border-radius:7px;font-size:10px;font-weight:600}
+  .tag-curve{background:rgba(123,47,255,.12);color:#a78bfa;border:1px solid rgba(123,47,255,.2)}
+  .tag-cobb{background:rgba(255,165,2,.1);color:#ffa502;border:1px solid rgba(255,165,2,.2)}
+  .tag-risser{background:rgba(0,229,255,.08);color:var(--accent);border:1px solid rgba(0,229,255,.15)}
+
+  /* Stat cards */
+  .stats-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:22px}
+  .stat-card{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:16px}
+  .stat-val{font-family:'Syne',sans-serif;font-size:1.6rem;font-weight:800;color:var(--accent)}
+  .stat-name{font-size:9px;letter-spacing:1.5px;color:#2a4455;margin-top:3px;text-transform:uppercase}
+
+  /* Trend grafik */
+  .chart-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px}
+  .section-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:#2a4455;margin-bottom:14px}
+  canvas{width:100%;display:block}
+
+  /* Seans tablosu */
+  .table-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;overflow:hidden;margin-bottom:20px}
+  .table-header{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+  table{width:100%;border-collapse:collapse}
+  th{padding:10px 16px;text-align:left;font-size:9px;letter-spacing:1.5px;color:#2a4455;text-transform:uppercase;border-bottom:1px solid var(--border);font-weight:500}
+  td{padding:11px 16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.03)}
+  tr:last-child td{border-bottom:none}
+  tr:hover td{background:rgba(255,255,255,.02)}
+  .score-cell{font-family:'DM Mono',monospace;font-weight:600}
+  .severity-badge{display:inline-block;padding:2px 8px;border-radius:5px;font-size:10px;font-weight:600}
+  .sev-NORMAL{background:rgba(46,213,115,.1);color:#2ed573}
+  .sev-ORTA{background:rgba(255,165,2,.1);color:#ffa502}
+  .sev-KRİTİK{background:rgba(255,71,87,.12);color:#ff4757}
+
+  /* Notlar */
+  .notes-card{background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:20px;margin-bottom:20px}
+  .notes-area{width:100%;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.07);border-radius:9px;padding:12px 14px;color:#e8f4f8;font-family:'DM Sans',sans-serif;font-size:14px;resize:vertical;min-height:100px;outline:none}
+  .notes-area:focus{border-color:rgba(0,229,255,.25)}
+  .save-btn{background:rgba(0,229,255,.1);border:1px solid rgba(0,229,255,.2);color:var(--accent);padding:8px 18px;border-radius:8px;font-family:'DM Sans',sans-serif;font-size:12px;cursor:pointer;margin-top:10px}
+
+  .trend-badge{display:inline-flex;align-items:center;gap:5px;padding:4px 12px;border-radius:100px;font-size:11px;font-weight:500;margin-left:10px}
+  .trend-improving{background:rgba(46,213,115,.12);color:#2ed573;border:1px solid rgba(46,213,115,.25)}
+  .trend-declining{background:rgba(255,71,87,.12);color:#ff4757;border:1px solid rgba(255,71,87,.25)}
+  .trend-stable{background:rgba(255,255,255,.05);color:#5a7a8a;border:1px solid rgba(255,255,255,.1)}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <a href="/therapist" class="back-btn">← Terapist</a>
+  <span style="font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700" id="topbarName">Yükleniyor...</span>
+  <div class="spacer"></div>
+  <button onclick="downloadPDF()" style="background:rgba(255,165,2,.1);border:1px solid rgba(255,165,2,.25);color:#ffa502;padding:7px 14px;border-radius:8px;font-size:12px;cursor:pointer">📄 PDF</button>
+  <button class="start-btn" id="startBtn" onclick="startSession()">▶ Yeni Seans</button>
+  <button class="delete-btn" onclick="deletePatient()">Sil</button>
+</div>
+
+<div class="container">
+
+  <!-- Profil başlığı -->
+  <div class="profile-header" id="profileHeader">
+    <div class="avatar other" id="pAvatar">?</div>
+    <div class="profile-info">
+      <div class="profile-name" id="pName">—</div>
+      <div class="profile-meta">
+        <span id="pAge">—</span>
+        <span id="pDiagnosis">—</span>
+      </div>
+      <div class="profile-tags" id="pTags"></div>
+    </div>
+  </div>
+
+  <!-- İstatistikler -->
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-val" id="sTotalSess">—</div><div class="stat-name">Toplam Seans</div></div>
+    <div class="stat-card"><div class="stat-val" id="sTotalMin" style="color:#a78bfa">—</div><div class="stat-name">Toplam Dk.</div></div>
+    <div class="stat-card"><div class="stat-val" id="sAvgScore" style="color:#2ed573">—</div><div class="stat-name">Ort. Skor</div></div>
+    <div class="stat-card"><div class="stat-val" id="sBestScore" style="color:#ffa502">—</div><div class="stat-name">En İyi Skor</div></div>
+  </div>
+
+  <!-- Skor trend grafiği -->
+  <div class="chart-card">
+    <div class="section-title">
+      Skor Trendi
+      <span class="trend-badge" id="trendBadge">—</span>
+    </div>
+    <canvas id="trendChart" height="80"></canvas>
+  </div>
+
+  <!-- Skolyoz açıları özeti -->
+  <div class="chart-card">
+    <div class="section-title">Ortalama Skolyoz Açıları</div>
+    <canvas id="scolChart" height="60"></canvas>
+  </div>
+
+  <!-- Seans geçmişi tablosu -->
+  <div class="table-card">
+    <div class="table-header">
+      <div class="section-title" style="margin:0">Seans Geçmişi</div>
+    </div>
+    <table>
+      <thead>
+        <tr>
+          <th>Tarih</th>
+          <th>Süre</th>
+          <th>Ort. Skor</th>
+          <th>En İyi</th>
+          <th>Tekrar</th>
+          <th>T°</th>
+          <th>TL°</th>
+          <th>L°</th>
+          <th>Trend</th>
+        </tr>
+      </thead>
+      <tbody id="sessionsTable">
+        <tr><td colspan="9" style="text-align:center;color:#2a4455;padding:24px">Yükleniyor...</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Notlar -->
+  <div class="notes-card">
+    <div class="section-title">Klinik Notlar</div>
+    <textarea class="notes-area" id="notesArea" placeholder="Hasta ile ilgili klinik notlar..."></textarea>
+    <button class="save-btn" onclick="saveNotes()">💾 Notları Kaydet</button>
+  </div>
+
+</div>
+
+<script>
+const PATIENT_ID = parseInt('{{ patient_id }}');
+let patientData = null;
+
+// ── Hasta Yükle ────────────────────────────────────────────
+async function loadPatient() {
+  try {
+    const [pr, sr, statr] = await Promise.all([
+      fetch(`/api/patients/${PATIENT_ID}`).then(r=>r.json()),
+      fetch(`/api/patients/${PATIENT_ID}/sessions`).then(r=>r.json()),
+      fetch(`/api/patients/${PATIENT_ID}/stats`).then(r=>r.json()),
+    ]);
+    patientData = pr;
+    renderProfile(pr);
+    renderStats(statr);
+    renderSessions(sr);
+    renderTrendChart(sr);
+    renderScolChart(statr);
+    document.getElementById('notesArea').value = pr.notes || '';
+  } catch(e) {
+    console.error(e);
+  }
+}
+
+function renderProfile(p) {
+  const gender = p.gender === 'K' ? 'female' : p.gender === 'E' ? 'male' : 'other';
+  const gCh    = p.gender === 'K' ? '♀' : p.gender === 'E' ? '♂' : '?';
+  const age    = p.birth_year ? (new Date().getFullYear()-p.birth_year)+' yaş' : '—';
+
+  document.getElementById('topbarName').textContent = p.name;
+  document.getElementById('pAvatar').textContent = gCh;
+  document.getElementById('pAvatar').className = `avatar ${gender}`;
+  document.getElementById('pName').textContent = p.name;
+  document.getElementById('pAge').textContent  = age;
+  document.getElementById('pDiagnosis').textContent = p.diagnosis || 'Tanı belirtilmemiş';
+
+  const tags = document.getElementById('pTags');
+  tags.innerHTML = '';
+  if (p.curve_type) tags.innerHTML += `<span class="tag tag-curve">Schroth ${p.curve_type}</span>`;
+  if (p.cobb_angle) tags.innerHTML += `<span class="tag tag-cobb">Cobb ${p.cobb_angle}°</span>`;
+  if (p.risser != null) tags.innerHTML += `<span class="tag tag-risser">Risser ${p.risser}</span>`;
+}
+
+function renderStats(s) {
+  document.getElementById('sTotalSess').textContent = s.total_sessions || 0;
+  document.getElementById('sTotalMin').textContent  = Math.round((s.total_seconds||0)/60);
+  document.getElementById('sAvgScore').textContent  = Math.round(s.overall_avg||0)||'—';
+  document.getElementById('sBestScore').textContent = Math.round(s.all_time_best||0)||'—';
+
+  const badge = document.getElementById('trendBadge');
+  const trendMap = { improving:'📈 Gelişiyor', declining:'📉 Düşüş', stable:'➡ Stabil', insufficient_data:'📊 Yetersiz veri' };
+  badge.textContent = trendMap[s.trend] || '—';
+  badge.className = `trend-badge trend-${s.trend||'insufficient_data'}`;
+}
+
+function renderSessions(sessions) {
+  const tbody = document.getElementById('sessionsTable');
+  if (!sessions.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#2a4455;padding:24px">Henüz seans yok</td></tr>';
+    return;
+  }
+  tbody.innerHTML = sessions.map(s => {
+    const scoreColor = (s.avg_score||0) >= 80 ? '#2ed573' : (s.avg_score||0) >= 55 ? '#ffa502' : '#ff4757';
+    const dur = s.duration_sec ? Math.floor(s.duration_sec/60)+':'+(String(s.duration_sec%60).padStart(2,'0')) : '—';
+    const trendIcon = s.trend === 'improving' ? '📈' : s.trend === 'declining' ? '📉' : '➡';
+    const date = s.started_at ? new Date(s.started_at).toLocaleDateString('tr-TR') : '—';
+    return `
+    <tr>
+      <td>${date}</td>
+      <td>${dur}</td>
+      <td class="score-cell" style="color:${scoreColor}">${Math.round(s.avg_score||0)}</td>
+      <td class="score-cell" style="color:#2ed573">${Math.round(s.best_score||0)}</td>
+      <td>${s.rep_count||0}</td>
+      <td style="color:${angleColor(s.avg_thoracic)}">${(s.avg_thoracic||0).toFixed(1)}°</td>
+      <td style="color:${angleColor(s.avg_thoracolumbar)}">${(s.avg_thoracolumbar||0).toFixed(1)}°</td>
+      <td style="color:${angleColor(s.avg_lumbar)}">${(s.avg_lumbar||0).toFixed(1)}°</td>
+      <td>${trendIcon}</td>
+    </tr>`;
+  }).join('');
+}
+
+function angleColor(a) {
+  return (a||0) > 40 ? '#ff4757' : (a||0) > 20 ? '#ffa502' : '#2ed573';
+}
+
+// ── Skor Trend Grafiği ─────────────────────────────────────
+function renderTrendChart(sessions) {
+  const canvas = document.getElementById('trendChart');
+  if (!sessions.length) return;
+  const ctx = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = 80 * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = 80;
+  ctx.clearRect(0,0,W,H);
+
+  const scores = [...sessions].reverse().map(s => s.avg_score || 0);
+  if (scores.length < 2) return;
+  const max = Math.max(...scores, 60), min = 0;
+  const step = W / (scores.length - 1);
+
+  const grad = ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,'rgba(0,229,255,.25)');
+  grad.addColorStop(1,'rgba(0,229,255,.01)');
+
+  ctx.beginPath();
+  scores.forEach((s,i) => {
+    const x = i*step, y = H - (s-min)/(max-min)*(H-12)-6;
+    i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+  });
+  ctx.strokeStyle='#00e5ff'; ctx.lineWidth=2.5; ctx.stroke();
+
+  ctx.lineTo((scores.length-1)*step, H); ctx.lineTo(0,H);
+  ctx.closePath(); ctx.fillStyle=grad; ctx.fill();
+
+  scores.forEach((s,i) => {
+    const x=i*step, y=H-(s-min)/(max-min)*(H-12)-6;
+    ctx.beginPath(); ctx.arc(x,y,3.5,0,Math.PI*2);
+    ctx.fillStyle=s>=80?'#2ed573':s>=55?'#ffa502':'#ff4757'; ctx.fill();
+  });
+}
+
+// ── Skolyoz Açı Grafiği ────────────────────────────────────
+function renderScolChart(stats) {
+  const canvas = document.getElementById('scolChart');
+  const ctx = canvas.getContext('2d');
+  canvas.width  = canvas.offsetWidth * devicePixelRatio;
+  canvas.height = 60 * devicePixelRatio;
+  ctx.scale(devicePixelRatio, devicePixelRatio);
+  const W = canvas.offsetWidth, H = 60;
+  ctx.clearRect(0,0,W,H);
+
+  const labels = ['Thoracic','T-Lumbar','Lumbar'];
+  const values = [stats.avg_thoracic||0, stats.avg_thoracolumbar||0, stats.avg_lumbar||0];
+  const colors = values.map(v => v>40?'#ff4757':v>20?'#ffa502':'#2ed573');
+  const maxV   = Math.max(...values, 50);
+  const barW   = W/5, gap = W/10;
+
+  values.forEach((v,i) => {
+    const x = gap + i*(barW+gap);
+    const h = (v/maxV)*(H-20);
+    ctx.fillStyle = colors[i]+'30';
+    ctx.beginPath(); ctx.roundRect(x, H-h-14, barW, h, 4); ctx.fill();
+    ctx.fillStyle = colors[i];
+    ctx.beginPath(); ctx.roundRect(x, H-h-14, barW, 4, 2); ctx.fill();
+
+    ctx.fillStyle = colors[i];
+    ctx.font = `bold ${Math.round(H*.2)}px 'DM Mono',monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(v.toFixed(1)+'°', x+barW/2, H-h-18);
+
+    ctx.fillStyle = '#2a4455';
+    ctx.font = `${Math.round(H*.15)}px sans-serif`;
+    ctx.fillText(labels[i], x+barW/2, H);
+  });
+}
+
+// ── Notları Kaydet ────────────────────────────────────────
+async function saveNotes() {
+  const notes = document.getElementById('notesArea').value;
+  await fetch(`/api/patients/${PATIENT_ID}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({notes})
+  });
+  const btn = document.querySelector('.save-btn');
+  btn.textContent = '✅ Kaydedildi';
+  setTimeout(() => btn.textContent = '💾 Notları Kaydet', 2000);
+}
+
+// ── Hasta Sil ─────────────────────────────────────────────
+async function deletePatient() {
+  if (!confirm(`${patientData?.name || 'Bu hasta'} silinecek. Emin misiniz?`)) return;
+  await fetch(`/api/patients/${PATIENT_ID}`, {method:'DELETE'});
+  window.location.href = '/therapist';
+}
+
+// ── Yeni Seans ────────────────────────────────────────────
+function startSession() {
+  const code = Array.from({length:6}, () => 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[Math.floor(Math.random()*32)]).join('');
+  const base = window.location.origin;
+  const url  = `${base}/phone?session=${code}&patient=${PATIENT_ID}`;
+
+  fetch('/api/sessions/start', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({patient_id: PATIENT_ID, session_code: code})
+  });
+
+  window.open(url, '_blank');
+  alert(`Seans Kodu: ${code}\n\nTelefon: /phone?session=${code}\nQuest: /quest?session=${code}`);
+}
+
+function downloadPDF() {
+  window.open(`/api/patients/${PATIENT_ID}/report.pdf`, '_blank');
+}
+
+// Init
+loadPatient();
+window.addEventListener('resize', () => { setTimeout(() => { renderTrendChart([]); }, 100); });
+</script>
+</body>
+</html>
