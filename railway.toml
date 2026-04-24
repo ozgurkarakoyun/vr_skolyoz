@@ -2,7 +2,7 @@
 builder = "nixpacks"
 
 [build.nixpacksPlan.phases.setup]
-nixPkgs = ["glib", "python311"]
+nixPkgs = ["glib", "python311", "stdenv.cc.cc.lib"]
 
 [build.nixpacksPlan.phases.install]
 cmds = [
