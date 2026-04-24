@@ -14,10 +14,13 @@ from contextlib import contextmanager
 
 logger = logging.getLogger(__name__)
 
-# Railway Volume veya lokal
-DATA_DIR = os.environ.get('DATA_DIR', '/data')
-if not os.path.exists(DATA_DIR):
-    DATA_DIR = os.path.join(os.path.dirname(__file__), 'data')
+# Railway Volume veya lokal — /data yoksa app klasörüne düş
+_default_data = '/data'
+try:
+    os.makedirs(_default_data, exist_ok=True)
+    DATA_DIR = os.environ.get('DATA_DIR', _default_data)
+except PermissionError:
+    DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
 os.makedirs(DATA_DIR, exist_ok=True)
 
 DB_PATH = os.path.join(DATA_DIR, 'schroth.db')
