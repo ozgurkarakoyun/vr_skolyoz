@@ -1,52 +1,129 @@
 """
 app.py — Schroth VR Backend v5
-────────────────────────────────────────────────────────────────
-Aşama 5: Hasta profili + Terapist paneli eklendi
 """
-from flask import Flask, render_template, request, jsonify, send_file, make_response
-from flask_socketio import SocketIO, emit, join_room, leave_room
-import base64, cv2, numpy as np, os, logging
+import os
+import logging
+import base64
+import json
 from datetime import datetime
 
-from schroth_analyzer import SchrothAnalyzer
-from scoliosis_engine import analyze_scoliosis_frame, estimate_from_pose_keypoints, get_scoliosis_model
-from pdf_report import generate_pdf
-from database import (
-    create_patient, get_patient, get_all_patients, update_patient, delete_patient,
-    create_session, end_session, get_patient_sessions, get_session_by_code,
-    get_patient_stats,
+# ── Logging ilk önce kurulsun ────────────────────────────────
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
 )
+logger = logging.getLogger(__name__)
+
+# ── Flask ────────────────────────────────────────────────────
+from flask import Flask, render_template, request, jsonify, make_response
+from flask_socketio import SocketIO, emit, join_room, leave_room
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'schroth-vr-secret-2024')
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
-# ─── Pose model ──────────────────────────────────────────────
+# ── Lazy imports (crash etmesin) ─────────────────────────────
+# cv2, numpy, ultralytics — ilk frame gelince yüklenir
+
+def _import_cv2():
+    try:
+        import cv2
+        import numpy as np
+        return cv2, np
+    except ImportError as e:
+        logger.error(f"cv2 import failed: {e}")
+        return None, None
+
+# ── Database — hata olursa uygulama çökmez ───────────────────
+try:
+    from database import (
+        create_patient, get_patient, get_all_patients, update_patient, delete_patient,
+        create_session, end_session, get_patient_sessions, get_session_by_code,
+        get_patient_stats,
+    )
+    DB_OK = True
+    logger.info("Database OK")
+except Exception as e:
+    logger.error(f"Database init failed: {e} — DB features disabled")
+    DB_OK = False
+    # Stub fonksiyonlar — uygulama yine de açılır
+    def get_all_patients(): return []
+    def get_patient(pid): return None
+    def create_patient(**kw): return None
+    def update_patient(pid, **kw): pass
+    def delete_patient(pid): pass
+    def create_session(pid, code): return None
+    def end_session(code, data): pass
+    def get_patient_sessions(pid, limit=20): return []
+    def get_session_by_code(code): return None
+    def get_patient_stats(pid): return {}
+
+# ── Schroth Analyzer ─────────────────────────────────────────
+try:
+    from schroth_analyzer import SchrothAnalyzer
+    ANALYZER_OK = True
+    logger.info("SchrothAnalyzer OK")
+except Exception as e:
+    logger.error(f"SchrothAnalyzer import failed: {e}")
+    ANALYZER_OK = False
+    SchrothAnalyzer = None
+
+# ── Scoliosis Engine ─────────────────────────────────────────
+try:
+    from scoliosis_engine import (
+        analyze_scoliosis_frame, estimate_from_pose_keypoints, get_scoliosis_model
+    )
+    SCOL_OK = True
+    logger.info("ScoliosisEngine OK")
+except Exception as e:
+    logger.error(f"ScoliosisEngine import failed: {e}")
+    SCOL_OK = False
+    def analyze_scoliosis_frame(f): return None
+    def estimate_from_pose_keypoints(k): return None
+    def get_scoliosis_model(): return None
+
+# ── PDF Report ───────────────────────────────────────────────
+try:
+    from pdf_report import generate_pdf
+    PDF_OK = True
+    logger.info("PDF report OK")
+except Exception as e:
+    logger.error(f"pdf_report import failed: {e}")
+    PDF_OK = False
+    def generate_pdf(*a, **kw): return b""
+
+# ─── Pose model (lazy) ───────────────────────────────────────
 _pose_model = None
+
 def get_pose_model():
     global _pose_model
     if _pose_model is None:
         try:
             from ultralytics import YOLO
-            path = os.environ.get('MODEL_PATH', 'models/pose_model.pt')
-            _pose_model = YOLO(path if os.path.exists(path) else 'yolo26n-pose.pt')
+            path = os.environ.get('MODEL_PATH', 'models/yolo26n-pose.pt')
+            model_file = path if os.path.exists(path) else 'yolo26n-pose.pt'
+            _pose_model = YOLO(model_file)
+            logger.info(f"Pose model loaded: {model_file}")
         except Exception as e:
-            logger.error(f"Pose model: {e}")
+            logger.error(f"Pose model load failed: {e}")
     return _pose_model
 
 # ─── Seans havuzu ────────────────────────────────────────────
 _analyzers: dict = {}
-_session_patients: dict = {}   # session_code → patient_id
+_session_patients: dict = {}
 
-def get_analyzer(room: str) -> SchrothAnalyzer:
+def get_analyzer(room: str):
+    if not ANALYZER_OK:
+        return None
     if room not in _analyzers:
         _analyzers[room] = SchrothAnalyzer(smoothing_window=5)
     return _analyzers[room]
 
 # ─── Frame işleme ────────────────────────────────────────────
 def process_frame(image_b64: str, room: str) -> dict:
+    cv2, np = _import_cv2()
+    if cv2 is None or np is None:
+        return {}
     try:
         if ',' in image_b64:
             image_b64 = image_b64.split(',')[1]
@@ -72,16 +149,19 @@ def process_frame(image_b64: str, room: str) -> dict:
                         pose_kps = kps_all[int(np.argmax(areas))]
                     else:
                         pose_kps = kps_all[0]
-                    schroth_data = analyzer.analyze(pose_kps, w, h)
+                    if analyzer:
+                        schroth_data = analyzer.analyze(pose_kps, w, h)
         else:
-            schroth_data = _mock_schroth(analyzer)
+            if analyzer:
+                schroth_data = _mock_schroth(analyzer, np)
 
         scol_data = None
-        sm = get_scoliosis_model()
-        if sm is not None:
-            scol_data = analyze_scoliosis_frame(frame)
-        elif pose_kps is not None:
-            scol_data = estimate_from_pose_keypoints(pose_kps)
+        if SCOL_OK:
+            sm = get_scoliosis_model()
+            if sm is not None:
+                scol_data = analyze_scoliosis_frame(frame)
+            elif pose_kps is not None:
+                scol_data = estimate_from_pose_keypoints(pose_kps)
 
         combined = {}
         if schroth_data:
@@ -100,10 +180,11 @@ def process_frame(image_b64: str, room: str) -> dict:
         return combined
 
     except Exception as e:
-        logger.error(f"process_frame: {e}")
+        logger.error(f"process_frame error: {e}")
         return {}
 
-def _mock_schroth(analyzer):
+
+def _mock_schroth(analyzer, np):
     import time, math
     t = time.time()
     angle = math.sin(t * 0.3) * 6
@@ -115,10 +196,11 @@ def _mock_schroth(analyzer):
         [290,380,0.8],[350,380,0.8],[290,450,0.7],[350,450,0.7],
     ], dtype=np.float32)
     r = analyzer.analyze(mock_kps, 640, 480)
-    if r: r['mock'] = True
+    if r:
+        r['mock'] = True
     return r or {}
 
-# ─── Sayfa Routes ─────────────────────────────────────────────
+# ─── Sayfa routes ─────────────────────────────────────────────
 @app.route('/')
 def index():
     return render_template('index.html')
@@ -142,6 +224,19 @@ def therapist():
 @app.route('/patient/<int:pid>')
 def patient_detail(pid):
     return render_template('patient_detail.html', patient_id=pid)
+
+# ─── Health check ─────────────────────────────────────────────
+@app.route('/health')
+def health():
+    return jsonify({
+        'status': 'ok',
+        'timestamp': datetime.now().isoformat(),
+        'db': DB_OK,
+        'analyzer': ANALYZER_OK,
+        'scol_engine': SCOL_OK,
+        'pdf': PDF_OK,
+        'active_sessions': len(_analyzers),
+    })
 
 # ─── Hasta API ────────────────────────────────────────────────
 @app.route('/api/patients', methods=['GET'])
@@ -174,8 +269,7 @@ def api_get_patient(pid):
 
 @app.route('/api/patients/<int:pid>', methods=['PUT'])
 def api_update_patient(pid):
-    d = request.json or {}
-    update_patient(pid, **d)
+    update_patient(pid, **(request.json or {}))
     return jsonify({'status': 'updated'})
 
 @app.route('/api/patients/<int:pid>', methods=['DELETE'])
@@ -191,7 +285,6 @@ def api_patient_sessions(pid):
 def api_patient_stats(pid):
     return jsonify(get_patient_stats(pid))
 
-# ─── Seans API ────────────────────────────────────────────────
 @app.route('/api/sessions/<code>', methods=['GET'])
 def api_get_session(code):
     s = get_session_by_code(code)
@@ -201,8 +294,7 @@ def api_get_session(code):
 
 @app.route('/api/sessions/<code>/end', methods=['POST'])
 def api_end_session(code):
-    d = request.json or {}
-    end_session(code, d)
+    end_session(code, request.json or {})
     return jsonify({'status': 'ended'})
 
 @app.route('/api/sessions/start', methods=['POST'])
@@ -216,25 +308,25 @@ def api_start_session():
     _session_patients[code] = int(pid)
     return jsonify({'session_db_id': sid, 'status': 'started'})
 
-# ─── Diğer ────────────────────────────────────────────────────
-
-# ─── PDF Rapor ────────────────────────────────────────────────
+# ─── PDF routes ───────────────────────────────────────────────
 @app.route('/api/patients/<int:pid>/report.pdf')
 def api_patient_report(pid):
-    """Son seans PDF raporu"""
+    if not PDF_OK or not DB_OK:
+        return jsonify({'error': 'PDF/DB kullanılamıyor'}), 503
     p = get_patient(pid)
     if not p:
         return jsonify({'error': 'Hasta bulunamadı'}), 404
-
     sessions = get_patient_sessions(pid, limit=10)
-    stats    = get_patient_stats(pid)
+    stats = get_patient_stats(pid)
     session_data = sessions[0] if sessions else {}
-
     try:
         pdf_bytes = generate_pdf(p, session_data, stats, sessions)
         response = make_response(pdf_bytes)
-        response.headers['Content-Type']        = 'application/pdf'
-        response.headers['Content-Disposition'] = f'attachment; filename="schroth_{p["name"].replace(" ","_")}_{datetime.now().strftime("%Y%m%d")}.pdf"'
+        response.headers['Content-Type'] = 'application/pdf'
+        response.headers['Content-Disposition'] = (
+            f'attachment; filename="schroth_{p["name"].replace(" ","_")}'
+            f'_{datetime.now().strftime("%Y%m%d")}.pdf"'
+        )
         return response
     except Exception as e:
         logger.error(f"PDF error: {e}")
@@ -242,40 +334,24 @@ def api_patient_report(pid):
 
 @app.route('/api/sessions/<code>/report.pdf')
 def api_session_report(code):
-    """Belirli seans PDF raporu"""
+    if not PDF_OK:
+        return jsonify({'error': 'PDF kullanılamıyor'}), 503
     sess = get_session_by_code(code)
     if not sess:
         return jsonify({'error': 'Seans bulunamadı'}), 404
-
     pid = sess.get('patient_id')
-    p   = get_patient(pid) if pid else {'name': 'Bilinmeyen Hasta'}
+    p = get_patient(pid) if pid else {'name': 'Bilinmeyen Hasta'}
     stats = get_patient_stats(pid) if pid else {}
     recent = get_patient_sessions(pid, limit=10) if pid else []
-
     try:
         pdf_bytes = generate_pdf(p, sess, stats, recent)
         response = make_response(pdf_bytes)
-        response.headers['Content-Type']        = 'application/pdf'
+        response.headers['Content-Type'] = 'application/pdf'
         response.headers['Content-Disposition'] = f'attachment; filename="schroth_seans_{code}.pdf"'
         return response
     except Exception as e:
         logger.error(f"PDF error: {e}")
         return jsonify({'error': str(e)}), 500
-
-@app.route('/health')
-def health():
-    return jsonify({
-        'status': 'ok',
-        'timestamp': datetime.now().isoformat(),
-        'active_sessions': len(_analyzers),
-        'scol_model': os.path.exists(os.environ.get('SCOL_MODEL_PATH','models/model_point4.pt')),
-        'pose_model': os.path.exists(os.environ.get('MODEL_PATH','models/pose_model.pt')),
-    })
-
-@app.route('/session/<room>/summary')
-def session_summary(room):
-    a = _analyzers.get(room)
-    return jsonify(a.get_session_summary() if a else {'error': 'not found'}), 200 if a else 404
 
 # ─── Socket.IO ────────────────────────────────────────────────
 @socketio.on('connect')
@@ -318,13 +394,15 @@ def on_frame(data):
         if not image_b64:
             return
         analysis = process_frame(image_b64, room)
-        # Hasta bilgisini ekle
         pid = _session_patients.get(room)
         if pid:
             analysis['patient_id'] = pid
-        emit('analysis', {'analysis': analysis, 'timestamp': datetime.now().isoformat()}, to=room)
+        emit('analysis', {
+            'analysis': analysis,
+            'timestamp': datetime.now().isoformat()
+        }, to=room)
     except Exception as e:
-        logger.error(f"frame event: {e}")
+        logger.error(f"frame event error: {e}")
 
 @socketio.on('reset_session')
 def on_reset_session(data):
@@ -335,12 +413,13 @@ def on_reset_session(data):
 
 @socketio.on('link_patient')
 def on_link_patient(data):
-    """Seansı hastaya bağla"""
     room = data.get('room')
-    pid  = data.get('patient_id')
+    pid = data.get('patient_id')
     if room and pid:
         _session_patients[room] = int(pid)
         emit('patient_linked', {'room': room, 'patient_id': pid}, to=room)
+
+logger.info("app.py loaded successfully — waiting for gunicorn to bind")
 
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
