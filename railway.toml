@@ -2,32 +2,21 @@
 builder = "nixpacks"
 
 [build.nixpacksPlan.phases.setup]
-# libGL kaldırıldı — headless OpenCV kullanıyoruz
 nixPkgs = ["glib", "python311"]
 
 [build.nixpacksPlan.phases.install]
 cmds = [
   "pip install --upgrade pip",
 
-  # 1. Önce headless OpenCV'yi sabitleyerek kur
-  "pip install opencv-python-headless==4.9.0.80",
+  # Tüm bağımlılıkları kur; constraints.txt opencv-python (full)'ü engeller
+  "pip install -r requirements.txt -c constraints.txt",
 
-  # 2. Geri kalan bağımlılıkları kur
-  #    ultralytics, opencv-python (full) çekmeye çalışır ama
-  #    --no-deps ile sadece paketi kur, bağımlılıklarını atla
-  "pip install -r requirements.txt --no-deps --ignore-installed opencv-python-headless",
-
-  # 3. Ultralytics'i bağımlılıklarıyla birlikte kur ama opencv'yi hariç tut
-  "pip install ultralytics==8.2.18 --no-deps",
-  "pip install lapx>=0.5.2 matplotlib>=3.3.0 numpy>=1.24.0 Pillow>=7.1.2 psutil PyYAML>=5.3.1 requests>=2.23.0 scipy>=1.4.1 torch torchvision tqdm>=4.64.0 seaborn>=0.11.0 pandas>=1.1.4",
-
-  # 4. Eğer full opencv yanlışlıkla kurulduysa kaldır, headless'i yeniden kur
+  # ultralytics yine de full opencv kurmuşsa temizle
   "pip uninstall -y opencv-python || true",
-  "pip install opencv-python-headless==4.9.0.80 --force-reinstall",
 
-  # 5. Doğrula
-  "python -c \"import cv2; print('cv2 OK:', cv2.__version__)\"",
-  "python -c \"import ultralytics; print('ultralytics OK:', ultralytics.__version__)\""
+  # Doğrula
+  "python -c \"import cv2; print('[OK] cv2', cv2.__version__)\"",
+  "python -c \"import ultralytics; print('[OK] ultralytics', ultralytics.__version__)\""
 ]
 
 [deploy]
@@ -40,5 +29,3 @@ restartPolicyMaxRetries = 3
 [deploy.envVars]
 PYTHONUNBUFFERED = "1"
 PYTHONDONTWRITEBYTECODE = "1"
-# OpenCV'nin headless modda çalışmasını zorla
-OPENCV_IO_ENABLE_OPENEXR = "0"

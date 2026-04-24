@@ -1,0 +1,5 @@
+# constraints.txt
+# pip install -c constraints.txt ile kullanılır.
+# ultralytics'in çektiği opencv-python (full) sürümünü engeller,
+# sadece opencv-python-headless geçerli olur.
+opencv-python==0.0.0

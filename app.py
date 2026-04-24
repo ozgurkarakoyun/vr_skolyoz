@@ -3,20 +3,6 @@ app.py — Schroth VR Backend v5
 ────────────────────────────────────────────────────────────────
 Aşama 5: Hasta profili + Terapist paneli eklendi
 """
-# ── OpenCV headless guard ─────────────────────────────────────
-# ultralytics opencv-python (full) kurmuşsa, import öncesi kaldır
-import subprocess, sys
-try:
-    import cv2
-except ImportError:
-    # full opencv kurulu ve libGL eksik → headless'e geç
-    subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", "opencv-python"], 
-                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    subprocess.check_call([sys.executable, "-m", "pip", "install", 
-                           "opencv-python-headless==4.9.0.80", "--quiet"])
-    import cv2
-# ─────────────────────────────────────────────────────────────
-
 from flask import Flask, render_template, request, jsonify, send_file, make_response
 from flask_socketio import SocketIO, emit, join_room, leave_room
 import base64, cv2, numpy as np, os, logging
