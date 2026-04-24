@@ -12,8 +12,8 @@ cmds = [
   "pip install -r requirements.txt -c constraints.txt",
 
   # ultralytics yine de full opencv kurmuşsa temizle
-  "pip uninstall -y opencv-python || true",
 
+ "pip uninstall -y opencv-python && pip install opencv-python-headless==4.9.0.80"
   # Doğrula
   "python -c \"import cv2; print('[OK] cv2', cv2.__version__)\"",
   "python -c \"import ultralytics; print('[OK] ultralytics', ultralytics.__version__)\""
