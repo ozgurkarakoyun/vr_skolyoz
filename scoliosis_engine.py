@@ -44,14 +44,19 @@ def get_scoliosis_model():
     global _scol_model
     if _scol_model is None:
         try:
+            import torch
             from ultralytics import YOLO
+            from ultralytics.nn.tasks import DetectionModel
+
+            # PyTorch 2.6+ — allowlist
+            torch.serialization.add_safe_globals([DetectionModel])
+
             model_path = os.environ.get('SCOL_MODEL_PATH', 'models/model_point4.pt')
             if os.path.exists(model_path):
                 _scol_model = YOLO(model_path)
                 logger.info(f"Scoliosis model loaded: {model_path}")
             else:
                 logger.warning(f"model_point4.pt not found at {model_path}")
-                _scol_model = None
         except Exception as e:
             logger.error(f"Scoliosis model error: {e}")
     return _scol_model
