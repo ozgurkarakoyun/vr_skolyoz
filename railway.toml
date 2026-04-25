@@ -1,30 +1,9 @@
 [build]
-builder = "nixpacks"
-
-[build.nixpacksPlan.phases.setup]
-nixPkgs = ["glib", "python311", "stdenv.cc.cc.lib", "libGL", "libGLU"]
-
-[build.nixpacksPlan.phases.install]
-cmds = [
-  "pip install --upgrade pip",
-
-  # Önce headless kur
-  "pip install opencv-python-headless==4.9.0.80",
-
-  # requirements.txt — constraints ile full opencv'yi blokla
-  "pip install -r requirements.txt -c constraints.txt",
-
-  # ultralytics tekrar full opencv çektiyse zorla kaldır
-  "pip uninstall -y opencv-python || true",
-  "pip install opencv-python-headless==4.9.0.80 --force-reinstall",
-
-  # Doğrula
-  "python -c \"import cv2; print('[OK] cv2', cv2.__version__)\"",
-  "python -c \"import ultralytics; print('[OK] ultralytics', ultralytics.__version__)\""
-]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT --timeout 120 --log-level debug app:app"
+startCommand = "gunicorn --worker-class eventlet -w 1 --bind 0.0.0.0:$PORT --timeout 120 app:app"
 healthcheckPath = "/health"
 healthcheckTimeout = 120
 restartPolicyType = "on_failure"

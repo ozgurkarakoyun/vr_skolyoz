@@ -1,4 +1,4 @@
-# ── Web framework ──────────────────────────────────────────
+# Web framework
 flask==3.0.3
 flask-socketio==5.3.6
 python-socketio==5.11.3
@@ -6,17 +6,27 @@ python-engineio==4.9.1
 gunicorn==22.0.0
 eventlet==0.36.1
 
-# ── OpenCV — SADECE headless (libGL gerektirmez) ───────────
-# NOT: ultralytics opencv-python (full) çekmeye çalışır.
-# railway.toml install fazı bunu pip uninstall ile temizler.
+# OpenCV — headless only
 opencv-python-headless==4.9.0.80
 
-# ── Sayısal / görüntü ──────────────────────────────────────
+# Numerical / image
 numpy==1.26.4
 Pillow==10.3.0
 
-# ── YOLO (opencv-python bağımlılığı railway.toml'da yönetilir) ──
-ultralytics==8.2.18
+# YOLO dependencies — manuel olarak listelendi
+# ultralytics direkt yazılmıyor çünkü opencv-python (full) çekiyor
+# Bunun yerine ultralytics'in tüm bağımlılıkları burada:
+torch
+torchvision
+matplotlib
+pandas
+psutil
+pyyaml
+requests
+scipy
+seaborn
+tqdm
+lapx>=0.5.2
 
-# ── PDF ────────────────────────────────────────────────────
+# PDF
 reportlab==4.2.0
