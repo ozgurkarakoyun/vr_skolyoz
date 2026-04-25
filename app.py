@@ -101,14 +101,19 @@ def get_pose_model():
         try:
             import torch
             from ultralytics import YOLO
-            from ultralytics.nn.tasks import PoseModel
 
-            # PyTorch 2.6+ weights_only=True varsayılan — YOLO modelini allowlist'e al
-            torch.serialization.add_safe_globals([PoseModel])
+            # PyTorch 2.6+ weights_only=True varsayılan yaptı.
+            # YOLO modellerini yüklemek için False gerekiyor.
+            _orig_load = torch.load
+            torch.load = lambda *a, **kw: _orig_load(
+                *a, **{**kw, 'weights_only': False}
+            )
 
             path = os.environ.get('MODEL_PATH', 'models/yolo26n-pose.pt')
             model_file = path if os.path.exists(path) else 'yolo26n-pose.pt'
             _pose_model = YOLO(model_file)
+
+            torch.load = _orig_load  # geri yükle
             logger.info(f"Pose model loaded: {model_file}")
         except Exception as e:
             logger.error(f"Pose model load failed: {e}")
