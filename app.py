@@ -99,7 +99,13 @@ def get_pose_model():
     global _pose_model
     if _pose_model is None:
         try:
+            import torch
             from ultralytics import YOLO
+            from ultralytics.nn.tasks import PoseModel
+
+            # PyTorch 2.6+ weights_only=True varsayılan — YOLO modelini allowlist'e al
+            torch.serialization.add_safe_globals([PoseModel])
+
             path = os.environ.get('MODEL_PATH', 'models/yolo26n-pose.pt')
             model_file = path if os.path.exists(path) else 'yolo26n-pose.pt'
             _pose_model = YOLO(model_file)
@@ -224,6 +230,49 @@ def therapist():
 @app.route('/patient/<int:pid>')
 def patient_detail(pid):
     return render_template('patient_detail.html', patient_id=pid)
+
+
+# ─── Geçici Model Upload Endpoint ────────────────────────────
+# Kullanım: https://sizin-url/admin/upload?key=ADMIN_KEY
+# Modeli yükledikten sonra bu endpoint'i kaldırın!
+@app.route('/admin/upload', methods=['GET', 'POST'])
+def admin_upload():
+    admin_key = os.environ.get('ADMIN_KEY', '')
+    if not admin_key or request.args.get('key') != admin_key:
+        return 'Yetkisiz — ADMIN_KEY env var eksik veya hatalı', 403
+
+    if request.method == 'POST':
+        f = request.files.get('model')
+        if not f:
+            return 'Dosya seçilmedi', 400
+        save_dir = os.environ.get('SCOL_MODEL_PATH', '/data/models/model_point4.pt')
+        save_dir = os.path.dirname(save_dir)
+        os.makedirs(save_dir, exist_ok=True)
+        dest = os.path.join(save_dir, f.filename)
+        f.save(dest)
+        size_mb = os.path.getsize(dest) / 1024 / 1024
+        return f'✅ Yüklendi: {dest} ({size_mb:.1f} MB)', 200
+
+    # GET — form göster
+    files = []
+    model_dir = os.path.dirname(os.environ.get('SCOL_MODEL_PATH', '/data/models/model_point4.pt'))
+    if os.path.exists(model_dir):
+        files = [(f, round(os.path.getsize(os.path.join(model_dir,f))/1024/1024,1))
+                 for f in os.listdir(model_dir)]
+    file_list = ''.join(f'<li>{n} — {s} MB</li>' for n, s in files)
+    return f"""
+    <html><body style="font-family:sans-serif;padding:24px;background:#1a1a2e;color:#e8f4f8">
+    <h2>📦 Model Yükle</h2>
+    <form method="post" enctype="multipart/form-data">
+        <input type="file" name="model" accept=".pt" style="color:#e8f4f8"><br><br>
+        <button type="submit" style="padding:10px 20px;background:#00e5ff;border:none;border-radius:8px;cursor:pointer;font-weight:bold">
+            Yükle
+        </button>
+    </form>
+    <h3>Mevcut Dosyalar:</h3>
+    <ul>{file_list if file_list else '<li>Henüz dosya yok</li>'}</ul>
+    </body></html>
+    """
 
 # ─── Health check ─────────────────────────────────────────────
 @app.route('/health')
@@ -420,54 +469,7 @@ def on_link_patient(data):
         emit('patient_linked', {'room': room, 'patient_id': pid}, to=room)
 
 logger.info("app.py loaded successfully — waiting for gunicorn to bind")
-# ─── Geçici Model Upload Endpoint ────────────────────────────
-# Kullanım: https://sizin-url/admin/upload?key=ADMIN_KEY
-# Modeli yükledikten sonra bu endpoint'i kaldırın!
-@app.route('/admin/upload', methods=['GET', 'POST'])
-def admin_upload():
-    admin_key = os.environ.get('ADMIN_KEY', '')
-    if not admin_key or request.args.get('key') != admin_key:
-        return 'Yetkisiz — ADMIN_KEY env var eksik veya hatalı', 403
 
-    if request.method == 'POST':
-        f = request.files.get('model')
-        if not f:
-            return 'Dosya seçilmedi', 400
-        save_path = os.environ.get('SCOL_MODEL_PATH', '/data/models/model_point4.pt')
-        save_dir = os.path.dirname(save_path)
-        os.makedirs(save_dir, exist_ok=True)
-        dest = os.path.join(save_dir, f.filename)
-        f.save(dest)
-        size_mb = os.path.getsize(dest) / 1024 / 1024
-        return f'✅ Yüklendi: {dest} ({size_mb:.1f} MB)', 200
-
-    # GET — form göster
-    model_dir = os.path.dirname(
-        os.environ.get('SCOL_MODEL_PATH', '/data/models/model_point4.pt')
-    )
-    files = []
-    if os.path.exists(model_dir):
-        files = [
-            (fn, round(os.path.getsize(os.path.join(model_dir, fn)) / 1024 / 1024, 1))
-            for fn in os.listdir(model_dir)
-        ]
-    file_list = ''.join(f'<li>{n} — {s} MB</li>' for n, s in files)
-    return f"""
-    <html><body style="font-family:sans-serif;padding:24px;background:#1a1a2e;color:#e8f4f8">
-    <h2>📦 Model Yükle</h2>
-    <form method="post" enctype="multipart/form-data">
-        <input type="file" name="model" accept=".pt"
-               style="color:#e8f4f8;margin-bottom:12px;display:block">
-        <button type="submit"
-                style="padding:10px 24px;background:#00e5ff;border:none;
-                       border-radius:8px;cursor:pointer;font-weight:bold;font-size:14px">
-            Yükle
-        </button>
-    </form>
-    <h3>📁 Mevcut Dosyalar:</h3>
-    <ul>{file_list if file_list else '<li>Henüz dosya yok</li>'}</ul>
-    </body></html>
-    """
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     socketio.run(app, host='0.0.0.0', port=port, debug=False)
